@@ -3,6 +3,11 @@ import { useAuthStore } from "../stores/auth.store";
 import LoginView from "../views/LoginView.vue";
 import DashboardView from "../views/DashboardView.vue";
 import UsersView from "../views/UsersView.vue";
+import ClientsListView from "../views/ClientsListView.vue";
+import ClientDetailView from "../views/ClientDetailView.vue";
+import ClientFormView from "../views/ClientFormView.vue";
+import ContractWizardView from "../views/ContractWizardView.vue";
+import OfferFormView from "../views/OfferFormView.vue";
 
 export const router = createRouter({
   history: createWebHashHistory(),
@@ -16,6 +21,37 @@ export const router = createRouter({
     {
       path: "/",
       component: DashboardView,
+      meta: { requiresAuth: true },
+    },
+    {
+      path: "/clients",
+      component: ClientsListView,
+      meta: { requiresAuth: true },
+    },
+    {
+      path: "/clients/new",
+      component: ClientFormView,
+      meta: { requiresAuth: true },
+    },
+    {
+      path: "/clients/:id",
+      component: ClientDetailView,
+      meta: { requiresAuth: true },
+    },
+    {
+      path: "/clients/:id/edit",
+      name: "client-edit",
+      component: ClientFormView,
+      meta: { requiresAuth: true },
+    },
+    {
+      path: "/clients/:id/offers/new",
+      component: OfferFormView,
+      meta: { requiresAuth: true },
+    },
+    {
+      path: "/offers/:offerId/contracts/new",
+      component: ContractWizardView,
       meta: { requiresAuth: true },
     },
     {

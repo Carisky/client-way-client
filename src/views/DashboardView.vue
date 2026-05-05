@@ -7,7 +7,7 @@ import AppLayout from "../components/layout/AppLayout.vue";
     <div class="mb-6">
       <h2 class="text-2xl font-semibold text-highlighted">Dashboard</h2>
       <p class="mt-1 text-sm text-muted">
-        Foundation is ready. Business modules will attach here in the next phases.
+        Client records, contract drafts and continuous numbering are ready for daily work.
       </p>
     </div>
 
@@ -16,30 +16,30 @@ import AppLayout from "../components/layout/AppLayout.vue";
         <template #header>
           <div class="flex items-center gap-2">
             <UIcon name="i-lucide-shield-check" class="size-5 text-primary" />
-            <h3 class="font-medium text-highlighted">Authenticated shell</h3>
+            <h3 class="font-medium text-highlighted">Clients</h3>
           </div>
         </template>
-        <p class="text-sm text-muted">Routes require a valid API token before loading app views.</p>
+        <p class="text-sm text-muted">Create companies, addresses, identifiers and contacts.</p>
       </UCard>
 
       <UCard>
         <template #header>
           <div class="flex items-center gap-2">
             <UIcon name="i-lucide-server" class="size-5 text-primary" />
-            <h3 class="font-medium text-highlighted">API boundary</h3>
+            <h3 class="font-medium text-highlighted">Contracts</h3>
           </div>
         </template>
-        <p class="text-sm text-muted">HTTP calls are centralized in typed API modules.</p>
+        <p class="text-sm text-muted">Create contract drafts with type and language variant.</p>
       </UCard>
 
       <UCard>
         <template #header>
           <div class="flex items-center gap-2">
             <UIcon name="i-lucide-users" class="size-5 text-primary" />
-            <h3 class="font-medium text-highlighted">Accounts</h3>
+            <h3 class="font-medium text-highlighted">Numbering</h3>
           </div>
         </template>
-        <p class="text-sm text-muted">Admin users can create and deactivate employee accounts.</p>
+        <p class="text-sm text-muted">Confirming a draft assigns the next continuous number.</p>
       </UCard>
     </div>
   </AppLayout>
