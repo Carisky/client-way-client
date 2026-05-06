@@ -1,4 +1,4 @@
-import { spawn } from "node:child_process";
+import { execFileSync, spawn } from "node:child_process";
 import { delimiter, join } from "node:path";
 import { homedir } from "node:os";
 
@@ -10,6 +10,16 @@ const env = {
 };
 
 const tauriArgs = process.argv.slice(2);
+
+if (process.platform === "win32" && tauriArgs[0] === "dev") {
+  try {
+    execFileSync(process.execPath, [join(import.meta.dirname, "free-port.mjs"), "1420"], {
+      stdio: "ignore",
+    });
+  } catch {
+    // If cleanup fails, let Tauri/Vite report the actual port error.
+  }
+}
 
 const command = process.platform === "win32" ? "cmd.exe" : "tauri";
 const args =

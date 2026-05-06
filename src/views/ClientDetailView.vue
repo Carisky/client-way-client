@@ -100,7 +100,11 @@ onMounted(loadClient);
                     />
                   </div>
                 </div>
-                <ContractHistoryTable :contracts="offer.contracts" @uploaded="loadClient" />
+                <ContractHistoryTable
+                  :contracts="offer.contracts"
+                  @uploaded="loadClient"
+                  @generated="loadClient"
+                />
               </div>
               <p v-if="!client.offers.length" class="py-8 text-center text-sm text-muted">
                 No offers yet. Create an offer before adding contracts.

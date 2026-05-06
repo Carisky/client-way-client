@@ -8,6 +8,7 @@ import ClientDetailView from "../views/ClientDetailView.vue";
 import ClientFormView from "../views/ClientFormView.vue";
 import ContractWizardView from "../views/ContractWizardView.vue";
 import OfferFormView from "../views/OfferFormView.vue";
+import TemplatesView from "../views/TemplatesView.vue";
 
 export const router = createRouter({
   history: createWebHashHistory(),
@@ -52,6 +53,11 @@ export const router = createRouter({
     {
       path: "/offers/:offerId/contracts/new",
       component: ContractWizardView,
+      meta: { requiresAuth: true },
+    },
+    {
+      path: "/templates",
+      component: TemplatesView,
       meta: { requiresAuth: true },
     },
     {

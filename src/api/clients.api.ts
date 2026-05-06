@@ -32,6 +32,16 @@ export type ClientContract = {
   validUntil: string | null;
   status: ContractStatus;
   createdAt: string;
+  generatedDocuments?: GeneratedDocument[];
+};
+
+export type GeneratedDocument = {
+  id: number;
+  contractId: number;
+  templateId: number | null;
+  format: "DOCX" | "PDF" | "ZIP";
+  fileName: string;
+  createdAt: string;
 };
 
 export type ClientOffer = {

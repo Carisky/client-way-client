@@ -1,4 +1,4 @@
-import type { ContractStatus, ContractType, LanguageVariant } from "./clients.api";
+import type { ContractStatus, ContractType, GeneratedDocument, LanguageVariant } from "./clients.api";
 import { request } from "./http";
 
 export type ContractPayload = {
@@ -24,6 +24,7 @@ export type Contract = ContractPayload & {
       email: string | null;
     };
   };
+  generatedDocuments?: GeneratedDocument[];
 };
 
 export const createContractDraft = (offerId: number, payload: ContractPayload) => {
@@ -44,5 +45,25 @@ export const attachSignedCopy = (id: number, file: File) => {
   return request<{ contract: Contract }>(`/api/contracts/${id}/signed-copy`, {
     method: "POST",
     body,
+  });
+};
+
+export const generateContractDocuments = (id: number, templateIds?: number[]) => {
+  return request<{ documents: GeneratedDocument[]; contract: Contract }>(
+    `/api/contracts/${id}/generate-documents`,
+    {
+      method: "POST",
+      body: JSON.stringify({ templateIds }),
+    },
+  );
+};
+
+export const generatedDocumentDownloadUrl = (id: number) => {
+  return `http://localhost:4000/api/generated-documents/${id}/download`;
+};
+
+export const saveGeneratedDocumentToDownloads = (id: number) => {
+  return request<{ savedTo: string }>(`/api/generated-documents/${id}/save-to-downloads`, {
+    method: "POST",
   });
 };
