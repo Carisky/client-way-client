@@ -124,7 +124,9 @@ onMounted(loadClient);
                 class="rounded-md border border-default p-3"
               >
                 <UBadge class="mb-2" color="neutral" variant="soft">{{ person.side }}</UBadge>
-                <p class="font-medium text-highlighted">{{ person.fullName }}</p>
+                <p class="font-medium text-highlighted">
+                  {{ [person.firstName, person.lastName].filter(Boolean).join(" ") || person.fullName }}
+                </p>
                 <p class="text-sm text-muted">{{ person.position ?? "-" }}</p>
               </div>
               <p v-if="!client.authorizedPersons?.length" class="text-sm text-muted">No persons added.</p>

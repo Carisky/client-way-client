@@ -25,7 +25,13 @@ const isSaving = ref(false);
 const toast = useAppToast();
 const fieldErrors = ref<FieldErrors>({});
 
-const emptyPerson = (): AuthorizedPerson => ({ side: "CLIENT", fullName: "", position: null });
+const emptyPerson = (): AuthorizedPerson => ({
+  side: "CLIENT",
+  firstName: null,
+  lastName: null,
+  fullName: "",
+  position: null,
+});
 
 const form = ref<ClientPayload>({
   name: "",
@@ -74,7 +80,15 @@ const preparePayload = (): ClientPayload => ({
   eori: normalize(form.value.eori),
   email: normalize(form.value.email),
   bankAccount: normalize(form.value.bankAccount),
-  authorizedPersons: form.value.authorizedPersons.filter((person) => person.fullName.trim()),
+  authorizedPersons: form.value.authorizedPersons
+    .map((person) => ({
+      ...person,
+      firstName: normalize(person.firstName),
+      lastName: normalize(person.lastName),
+      fullName: [person.firstName, person.lastName].filter(Boolean).join(" ").trim() || person.fullName,
+      position: normalize(person.position),
+    }))
+    .filter((person) => person.firstName || person.lastName || person.fullName.trim()),
 });
 
 const fieldError = (path: string) => fieldErrors.value[path];
@@ -112,8 +126,11 @@ const validateForm = () => {
   }
 
   form.value.authorizedPersons.forEach((person, index) => {
-    if (person.fullName.trim() && person.fullName.trim().length < 2) {
-      errors = setFieldError(errors, `authorizedPersons.${index}.fullName`, "Name must contain at least 2 characters");
+    const firstName = person.firstName?.trim() ?? "";
+    const lastName = person.lastName?.trim() ?? "";
+
+    if ((firstName || lastName) && [firstName, lastName].join(" ").trim().length < 2) {
+      errors = setFieldError(errors, `authorizedPersons.${index}.firstName`, "Name or last name is required");
     }
   });
 
@@ -227,14 +244,17 @@ onMounted(loadClient);
           <div
             v-for="(person, index) in form.authorizedPersons"
             :key="index"
-            class="grid gap-3 md:grid-cols-[120px_1fr_1fr_auto]"
+            class="grid gap-3 md:grid-cols-[120px_1fr_1fr_1fr_auto]"
           >
             <select v-model="person.side" class="h-9 rounded-md border border-default bg-default px-3 text-sm">
               <option value="CLIENT">CLIENT</option>
               <option value="TSL">TSL</option>
             </select>
-            <UFormField :error="fieldError(`authorizedPersons.${index}.fullName`)">
-              <UInput v-model="person.fullName" placeholder="Full name" class="w-full" />
+            <UFormField :error="fieldError(`authorizedPersons.${index}.firstName`)">
+              <UInput v-model="person.firstName" placeholder="Name" class="w-full" />
+            </UFormField>
+            <UFormField :error="fieldError(`authorizedPersons.${index}.lastName`)">
+              <UInput v-model="person.lastName" placeholder="Last name" class="w-full" />
             </UFormField>
             <UInput v-model="person.position" placeholder="Position" />
             <UButton

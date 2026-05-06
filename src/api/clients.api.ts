@@ -18,6 +18,8 @@ export type Address = {
 export type AuthorizedPerson = {
   id?: number;
   side: AuthorizedPersonSide;
+  firstName: string | null;
+  lastName: string | null;
   fullName: string;
   position: string | null;
 };
