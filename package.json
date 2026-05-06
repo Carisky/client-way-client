@@ -1,11 +1,11 @@
 {
   "name": "client",
   "private": true,
-  "version": "0.1.4",
+  "version": "0.1.5",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "vue-tsc --noEmit; vite build",
+    "dev": "node scripts/vite-dev.mjs",
+    "build": "node scripts/vite-build.mjs",
     "build:remote": "node scripts/build-remote.mjs",
     "preview": "vite preview",
     "tauri": "node scripts/run-tauri.mjs"

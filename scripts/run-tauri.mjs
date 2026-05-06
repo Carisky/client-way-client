@@ -13,6 +13,41 @@ const env = {
 
 const tauriArgs = process.argv.slice(2);
 const tauriBin = join(import.meta.dirname, "..", "node_modules", "@tauri-apps", "cli", "tauri.js");
+const normalizeCommandPath = (path) => path.replace(/\\/g, "/");
+const getNodeCommand = () => {
+  if (process.platform !== "win32") {
+    return normalizeCommandPath(process.execPath);
+  }
+
+  try {
+    const escapedPath = process.execPath.replace(/'/g, "''");
+    const shortPath = execFileSync(
+      "powershell.exe",
+      [
+        "-NoProfile",
+        "-Command",
+        `$fso = New-Object -ComObject Scripting.FileSystemObject; $fso.GetFile('${escapedPath}').ShortPath`,
+      ],
+      { encoding: "utf8" },
+    ).trim();
+
+    return normalizeCommandPath(shortPath || process.execPath);
+  } catch {
+    return normalizeCommandPath(process.execPath);
+  }
+};
+const nodeCommand = getNodeCommand();
+const commandOverrideArgs = ["dev", "build"].includes(tauriArgs[0])
+  ? [
+      "--config",
+      JSON.stringify({
+        build: {
+          beforeDevCommand: `${nodeCommand} scripts/vite-dev.mjs`,
+          beforeBuildCommand: `${nodeCommand} scripts/vite-build.mjs`,
+        },
+      }),
+    ]
+  : [];
 
 if (process.platform === "win32" && tauriArgs[0] === "dev") {
   try {
@@ -25,7 +60,7 @@ if (process.platform === "win32" && tauriArgs[0] === "dev") {
 }
 
 const command = process.execPath;
-const args = [tauriBin, ...tauriArgs];
+const args = [tauriBin, ...tauriArgs, ...commandOverrideArgs];
 
 const child = spawn(command, args, {
   env,
