@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { basename, delimiter, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -117,6 +117,17 @@ function walkFiles(path) {
   });
 }
 
+function cleanBundleArtifacts() {
+  const resolvedBundleDir = resolve(bundleDir);
+  const resolvedClientRoot = resolve(clientRoot);
+
+  if (!resolvedBundleDir.startsWith(resolvedClientRoot)) {
+    throw new Error(`Refusing to clean bundle directory outside client root: ${resolvedBundleDir}`);
+  }
+
+  rmSync(resolvedBundleDir, { recursive: true, force: true });
+}
+
 function syncVersions(version, repository) {
   const config = readJson(tauriConfigPath);
   const pubkey = process.env.TAURI_UPDATER_PUBKEY ?? config.plugins?.updater?.pubkey;
@@ -169,24 +180,54 @@ function buildLatestJson(version, repository, msiPath, signaturePath) {
   return latestJsonPath;
 }
 
-function findBuildArtifacts() {
+function findBuildArtifacts(version) {
   const files = walkFiles(bundleDir);
-  const msiPath = files.find((file) => file.toLowerCase().endsWith(".msi"));
-  const signaturePath =
-    files.find((file) => file.toLowerCase().endsWith(".msi.sig")) ??
-    files.find((file) => file.toLowerCase().endsWith(".sig"));
+  const versionToken = `_${version}_`;
+  const msiCandidates = files.filter(
+    (file) => file.toLowerCase().endsWith(".msi") && basename(file).includes(versionToken)
+  );
+  const msiPath = msiCandidates.sort((left, right) => statSync(right).mtimeMs - statSync(left).mtimeMs)[0];
+  const signaturePath = msiPath && existsSync(`${msiPath}.sig`) ? `${msiPath}.sig` : undefined;
 
   if (!msiPath) {
-    throw new Error(`MSI artifact was not found in ${bundleDir}`);
+    throw new Error(`MSI artifact for version ${version} was not found in ${bundleDir}`);
   }
 
   if (!signaturePath) {
     throw new Error(
-      `Updater signature was not found in ${bundleDir}. Make sure TAURI_SIGNING_PRIVATE_KEY is set before running build:remote.`
+      `Updater signature for ${basename(msiPath)} was not found. Make sure TAURI_SIGNING_PRIVATE_KEY is set before running build:remote.`
     );
   }
 
   return { msiPath, signaturePath };
+}
+
+function getReleaseAssetNames(tag) {
+  try {
+    const output = exec("gh", ["release", "view", tag, "--json", "assets", "--jq", ".assets[].name"], {
+      stdio: ["ignore", "pipe", "ignore"],
+      encoding: "utf8",
+    });
+
+    return output
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter(Boolean);
+  } catch {
+    return [];
+  }
+}
+
+function deleteStaleReleaseAssets(tag, assets) {
+  const currentNames = new Set(assets.map((asset) => basename(asset)));
+  const staleNames = getReleaseAssetNames(tag).filter((name) => {
+    const isUpdaterAsset = name === "latest.json" || name.toLowerCase().endsWith(".msi") || name.toLowerCase().endsWith(".msi.sig");
+    return isUpdaterAsset && !currentNames.has(name);
+  });
+
+  for (const name of staleNames) {
+    exec("gh", ["release", "delete-asset", tag, name, "--yes"]);
+  }
 }
 
 function publishRelease(version, assets) {
@@ -201,6 +242,7 @@ function publishRelease(version, assets) {
   }
 
   if (releaseExists) {
+    deleteStaleReleaseAssets(tag, assets);
     exec("gh", ["release", "upload", tag, ...assets, "--clobber"]);
     return;
   }
@@ -233,9 +275,10 @@ for (const [key, value] of Object.entries(productionEnv)) {
 
 syncVersions(version, repository);
 
+cleanBundleArtifacts();
 exec(process.execPath, [tauriCliPath, "build", "--bundles", "msi"]);
 
-const { msiPath, signaturePath } = findBuildArtifacts();
+const { msiPath, signaturePath } = findBuildArtifacts(version);
 const latestJsonPath = buildLatestJson(version, repository, msiPath, signaturePath);
 
 publishRelease(version, [msiPath, signaturePath, latestJsonPath]);
