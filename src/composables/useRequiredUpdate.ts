@@ -1,11 +1,11 @@
-import { computed, ref } from "vue";
+import { computed, ref, shallowRef } from "vue";
 import { getVersion } from "@tauri-apps/api/app";
 import { relaunch } from "@tauri-apps/plugin-process";
 import { check, type DownloadEvent, type Update } from "@tauri-apps/plugin-updater";
 
 const currentVersion = ref("");
 const latestVersion = ref("");
-const update = ref<Update | null>(null);
+const update = shallowRef<Update | null>(null);
 const isChecking = ref(false);
 const isInstalling = ref(false);
 const error = ref("");
