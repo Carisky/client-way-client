@@ -9,15 +9,21 @@ import {
   type BooleanStatus,
   type ClientPayload,
 } from "../api/clients.api";
-import { ApiError } from "../api/http";
 import AppLayout from "../components/layout/AppLayout.vue";
+import { useAppToast } from "../composables/useAppToast";
+import {
+  fieldErrorsFromApiError,
+  setFieldError,
+  type FieldErrors,
+} from "../utils/formErrors";
 
 const route = useRoute();
 const router = useRouter();
 const clientId = computed(() => Number(route.params.id));
 const isEdit = computed(() => route.name === "client-edit");
 const isSaving = ref(false);
-const errorMessage = ref("");
+const toast = useAppToast();
+const fieldErrors = ref<FieldErrors>({});
 
 const emptyPerson = (): AuthorizedPerson => ({ side: "CLIENT", fullName: "", position: null });
 
@@ -71,6 +77,50 @@ const preparePayload = (): ClientPayload => ({
   authorizedPersons: form.value.authorizedPersons.filter((person) => person.fullName.trim()),
 });
 
+const fieldError = (path: string) => fieldErrors.value[path];
+
+const validateForm = () => {
+  let errors: FieldErrors = {};
+  const email = form.value.email?.trim();
+
+  if (form.value.name.trim().length < 2) {
+    errors = setFieldError(errors, "name", "Name must contain at least 2 characters");
+  }
+
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    errors = setFieldError(errors, "email", "Invalid email address");
+  }
+
+  if (!form.value.address.street.trim()) {
+    errors = setFieldError(errors, "address.street", "Street is required");
+  }
+
+  if (!form.value.address.houseNumber.trim()) {
+    errors = setFieldError(errors, "address.houseNumber", "House no. is required");
+  }
+
+  if (!form.value.address.postalCode.trim()) {
+    errors = setFieldError(errors, "address.postalCode", "Postal code is required");
+  }
+
+  if (!form.value.address.city.trim()) {
+    errors = setFieldError(errors, "address.city", "City is required");
+  }
+
+  if (!form.value.address.country.trim()) {
+    errors = setFieldError(errors, "address.country", "Country is required");
+  }
+
+  form.value.authorizedPersons.forEach((person, index) => {
+    if (person.fullName.trim() && person.fullName.trim().length < 2) {
+      errors = setFieldError(errors, `authorizedPersons.${index}.fullName`, "Name must contain at least 2 characters");
+    }
+  });
+
+  fieldErrors.value = errors;
+  return Object.keys(errors).length === 0;
+};
+
 const loadClient = async () => {
   if (!isEdit.value) {
     return;
@@ -105,7 +155,13 @@ const loadClient = async () => {
 
 const save = async () => {
   isSaving.value = true;
-  errorMessage.value = "";
+  fieldErrors.value = {};
+
+  if (!validateForm()) {
+    toast.error(new Error("Fix highlighted fields"));
+    isSaving.value = false;
+    return;
+  }
 
   try {
     const payload = preparePayload();
@@ -114,7 +170,8 @@ const save = async () => {
       : await createClient(payload);
     await router.push(`/clients/${response.client.id}`);
   } catch (error) {
-    errorMessage.value = error instanceof ApiError ? error.message : "Failed to save client";
+    fieldErrors.value = fieldErrorsFromApiError(error);
+    toast.error(error, "Failed to save client");
   } finally {
     isSaving.value = false;
   }
@@ -132,26 +189,17 @@ onMounted(loadClient);
       <p class="mt-1 text-sm text-muted">Company master data, identifiers, status and contacts.</p>
     </div>
 
-    <UAlert
-      v-if="errorMessage"
-      class="mb-5"
-      color="error"
-      variant="soft"
-      icon="i-lucide-circle-alert"
-      :title="errorMessage"
-    />
-
-    <form class="space-y-5" @submit.prevent="save">
+    <form class="space-y-5" novalidate @submit.prevent="save">
       <UCard>
         <template #header><h3 class="font-medium text-highlighted">Company</h3></template>
         <div class="grid gap-4 md:grid-cols-2">
-          <UFormField label="Name"><UInput v-model="form.name" class="w-full" required /></UFormField>
+          <UFormField label="Name" :error="fieldError('name')"><UInput v-model="form.name" class="w-full" /></UFormField>
           <UFormField label="Legal form"><UInput v-model="form.legalForm" class="w-full" /></UFormField>
           <UFormField label="NIP"><UInput v-model="form.nip" class="w-full" /></UFormField>
           <UFormField label="REGON"><UInput v-model="form.regon" class="w-full" /></UFormField>
           <UFormField label="KRS"><UInput v-model="form.krs" class="w-full" /></UFormField>
           <UFormField label="EORI"><UInput v-model="form.eori" class="w-full" /></UFormField>
-          <UFormField label="Email"><UInput v-model="form.email" type="email" class="w-full" /></UFormField>
+          <UFormField label="Email" :error="fieldError('email')"><UInput v-model="form.email" type="email" class="w-full" /></UFormField>
           <UFormField label="Bank account"><UInput v-model="form.bankAccount" class="w-full" /></UFormField>
         </div>
       </UCard>
@@ -159,12 +207,12 @@ onMounted(loadClient);
       <UCard>
         <template #header><h3 class="font-medium text-highlighted">Address</h3></template>
         <div class="grid gap-4 md:grid-cols-3">
-          <UFormField label="Street"><UInput v-model="form.address.street" class="w-full" required /></UFormField>
-          <UFormField label="House no."><UInput v-model="form.address.houseNumber" class="w-full" required /></UFormField>
+          <UFormField label="Street" :error="fieldError('address.street')"><UInput v-model="form.address.street" class="w-full" /></UFormField>
+          <UFormField label="House no." :error="fieldError('address.houseNumber')"><UInput v-model="form.address.houseNumber" class="w-full" /></UFormField>
           <UFormField label="Apartment"><UInput v-model="form.address.apartmentNumber" class="w-full" /></UFormField>
-          <UFormField label="Postal code"><UInput v-model="form.address.postalCode" class="w-full" required /></UFormField>
-          <UFormField label="City"><UInput v-model="form.address.city" class="w-full" required /></UFormField>
-          <UFormField label="Country"><UInput v-model="form.address.country" class="w-full" required /></UFormField>
+          <UFormField label="Postal code" :error="fieldError('address.postalCode')"><UInput v-model="form.address.postalCode" class="w-full" /></UFormField>
+          <UFormField label="City" :error="fieldError('address.city')"><UInput v-model="form.address.city" class="w-full" /></UFormField>
+          <UFormField label="Country" :error="fieldError('address.country')"><UInput v-model="form.address.country" class="w-full" /></UFormField>
         </div>
       </UCard>
 
@@ -185,7 +233,9 @@ onMounted(loadClient);
               <option value="CLIENT">CLIENT</option>
               <option value="TSL">TSL</option>
             </select>
-            <UInput v-model="person.fullName" placeholder="Full name" />
+            <UFormField :error="fieldError(`authorizedPersons.${index}.fullName`)">
+              <UInput v-model="person.fullName" placeholder="Full name" class="w-full" />
+            </UFormField>
             <UInput v-model="person.position" placeholder="Position" />
             <UButton
               icon="i-lucide-trash-2"

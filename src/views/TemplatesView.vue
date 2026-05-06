@@ -10,8 +10,9 @@ import {
   type DocumentTemplate,
   type TemplateLanguage,
 } from "../api/templates.api";
-import { ApiError } from "../api/http";
 import AppLayout from "../components/layout/AppLayout.vue";
+import { useAppToast } from "../composables/useAppToast";
+import { fieldErrorsFromApiError, setFieldError, type FieldErrors } from "../utils/formErrors";
 
 const contractTypes: ContractType[] = ["STANDARD", "IMPORT_33A", "CBAM", "SENT"];
 const translationLanguages: Array<Exclude<TemplateLanguage, "PL">> = ["EN", "UA", "RU"];
@@ -19,8 +20,8 @@ const translationLanguages: Array<Exclude<TemplateLanguage, "PL">> = ["EN", "UA"
 const templates = ref<DocumentTemplate[]>([]);
 const selectedContractType = ref<ContractType | "">("");
 const activeOnly = ref(true);
-const errorMessage = ref("");
-const successMessage = ref("");
+const toast = useAppToast();
+const fieldErrors = ref<FieldErrors>({});
 const isLoading = ref(false);
 const isUploading = ref(false);
 const form = ref({
@@ -31,42 +32,37 @@ const form = ref({
   file: null as File | null,
 });
 
+const fieldError = (path: string) => fieldErrors.value[path];
+
 const loadTemplates = async () => {
   isLoading.value = true;
-  errorMessage.value = "";
 
   try {
     templates.value = (await fetchTemplates(selectedContractType.value, activeOnly.value)).templates;
   } catch (error) {
-    errorMessage.value = error instanceof ApiError ? error.message : "Failed to load templates";
+    toast.error(error, "Failed to load templates");
   } finally {
     isLoading.value = false;
   }
 };
 
 const archive = async (templateId: number) => {
-  errorMessage.value = "";
-  successMessage.value = "";
-
   try {
     await archiveTemplate(templateId);
-    successMessage.value = "Template archived";
+    toast.success("Template archived");
     await loadTemplates();
   } catch (error) {
-    errorMessage.value = error instanceof ApiError ? error.message : "Failed to archive template";
+    toast.error(error, "Failed to archive template");
   }
 };
 
 const restore = async (templateId: number) => {
-  errorMessage.value = "";
-  successMessage.value = "";
-
   try {
     await restoreTemplate(templateId);
-    successMessage.value = "Template restored";
+    toast.success("Template restored");
     await loadTemplates();
   } catch (error) {
-    errorMessage.value = error instanceof ApiError ? error.message : "Failed to restore template";
+    toast.error(error, "Failed to restore template");
   }
 };
 
@@ -75,13 +71,15 @@ const onTemplateFile = (event: Event) => {
 };
 
 const submitTemplate = async () => {
+  fieldErrors.value = {};
+
   if (!form.value.file) {
-    errorMessage.value = "Template DOCX file is required";
+    fieldErrors.value = setFieldError({}, "file", "Template DOCX file is required");
+    toast.error(new Error("Fix highlighted fields"));
     return;
   }
 
   isUploading.value = true;
-  errorMessage.value = "";
 
   try {
     await uploadTemplate({
@@ -98,9 +96,11 @@ const submitTemplate = async () => {
       baseLanguage: "PL",
       file: null,
     };
+    toast.success("Template imported");
     await loadTemplates();
   } catch (error) {
-    errorMessage.value = error instanceof ApiError ? error.message : "Failed to upload template";
+    fieldErrors.value = fieldErrorsFromApiError(error);
+    toast.error(error, "Failed to upload template");
   } finally {
     isUploading.value = false;
   }
@@ -118,9 +118,14 @@ const submitTranslation = async (
     return;
   }
 
-  await uploadTemplateTranslation(templateId, language, file);
-  input.value = "";
-  await loadTemplates();
+  try {
+    await uploadTemplateTranslation(templateId, language, file);
+    input.value = "";
+    toast.success(`${language} translation attached`);
+    await loadTemplates();
+  } catch (error) {
+    toast.error(error, "Failed to attach translation");
+  }
 };
 
 onMounted(loadTemplates);
@@ -133,29 +138,12 @@ onMounted(loadTemplates);
       <p class="mt-1 text-sm text-muted">Import DOCX templates and parse database placeholders.</p>
     </div>
 
-    <UAlert
-      v-if="errorMessage"
-      class="mb-5"
-      color="error"
-      variant="soft"
-      icon="i-lucide-circle-alert"
-      :title="errorMessage"
-    />
-    <UAlert
-      v-if="successMessage"
-      class="mb-5"
-      color="success"
-      variant="soft"
-      icon="i-lucide-check"
-      :title="successMessage"
-    />
-
-    <div class="grid gap-5 xl:grid-cols-[380px_1fr]">
+    <div class="grid min-w-0 gap-5 xl:grid-cols-[380px_minmax(0,1fr)]">
       <UCard>
         <template #header><h3 class="font-medium text-highlighted">Import template</h3></template>
-        <form class="space-y-4" @submit.prevent="submitTemplate">
-          <UFormField label="Name">
-            <UInput v-model="form.name" class="w-full" required />
+        <form class="space-y-4" novalidate @submit.prevent="submitTemplate">
+          <UFormField label="Name" :error="fieldError('name')">
+            <UInput v-model="form.name" class="w-full" />
           </UFormField>
           <UFormField label="Code">
             <UInput v-model="form.code" placeholder="auto from filename" class="w-full" />
@@ -170,8 +158,8 @@ onMounted(loadTemplates);
               <option value="PL">PL</option>
             </select>
           </UFormField>
-          <UFormField label="DOCX file">
-            <input type="file" accept=".docx" class="w-full text-sm" required @change="onTemplateFile" />
+          <UFormField label="DOCX file" :error="fieldError('file')">
+            <input type="file" accept=".docx" class="w-full text-sm" @change="onTemplateFile" />
           </UFormField>
           <UButton type="submit" icon="i-lucide-upload" label="Import" block :loading="isUploading" />
         </form>

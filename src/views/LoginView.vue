@@ -1,31 +1,55 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { ApiError } from "../api/http";
+import { useAppToast } from "../composables/useAppToast";
 import { useAuthStore } from "../stores/auth.store";
+import { setFieldError, type FieldErrors } from "../utils/formErrors";
 
 const auth = useAuthStore();
 const route = useRoute();
 const router = useRouter();
+const toast = useAppToast();
 
 const email = ref("");
 const password = ref("");
-const errorMessage = ref("");
+const fieldErrors = ref<FieldErrors>({});
+
+const fieldError = (path: string) => fieldErrors.value[path];
+
+const validateForm = () => {
+  let errors: FieldErrors = {};
+
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value.trim())) {
+    errors = setFieldError(errors, "email", "Invalid email address");
+  }
+
+  if (!password.value) {
+    errors = setFieldError(errors, "password", "Password is required");
+  }
+
+  fieldErrors.value = errors;
+  return Object.keys(errors).length === 0;
+};
 
 const submit = async () => {
-  errorMessage.value = "";
+  fieldErrors.value = {};
+
+  if (!validateForm()) {
+    toast.error(new Error("Fix highlighted fields"));
+    return;
+  }
 
   try {
     await auth.login(email.value, password.value);
     await router.push(typeof route.query.redirect === "string" ? route.query.redirect : "/");
   } catch (error) {
-    errorMessage.value = error instanceof ApiError ? error.message : "Login failed";
+    toast.error(error, "Login failed");
   }
 };
 </script>
 
 <template>
-  <main class="grid min-h-screen grid-cols-1 bg-default lg:grid-cols-[1fr_420px]">
+  <main class="grid min-h-screen grid-cols-1 overflow-x-hidden bg-default lg:grid-cols-[1fr_420px]">
     <section class="hidden border-r border-default bg-muted px-12 py-10 lg:flex lg:flex-col">
       <div>
         <p class="text-sm font-medium text-muted">Client Way</p>
@@ -59,26 +83,17 @@ const submit = async () => {
           </div>
         </template>
 
-        <form class="space-y-4" @submit.prevent="submit">
-          <UAlert
-            v-if="errorMessage"
-            color="error"
-            variant="soft"
-            icon="i-lucide-circle-alert"
-            :title="errorMessage"
-          />
-
-          <UFormField label="Email">
-            <UInput v-model="email" type="email" autocomplete="email" class="w-full" required />
+        <form class="space-y-4" novalidate @submit.prevent="submit">
+          <UFormField label="Email" :error="fieldError('email')">
+            <UInput v-model="email" type="email" autocomplete="email" class="w-full" />
           </UFormField>
 
-          <UFormField label="Password">
+          <UFormField label="Password" :error="fieldError('password')">
             <UInput
               v-model="password"
               type="password"
               autocomplete="current-password"
               class="w-full"
-              required
             />
           </UFormField>
 

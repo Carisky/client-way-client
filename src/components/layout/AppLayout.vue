@@ -20,7 +20,7 @@ const handleLogout = async () => {
 </script>
 
 <template>
-  <div class="min-h-screen bg-default text-default">
+  <div class="min-h-screen overflow-x-hidden bg-default text-default">
     <aside
       class="fixed inset-y-0 left-0 hidden w-64 border-r border-default bg-muted px-4 py-5 lg:block"
     >
@@ -44,7 +44,7 @@ const handleLogout = async () => {
       </nav>
     </aside>
 
-    <div class="lg:pl-64">
+    <div class="min-w-0 lg:pl-64">
       <header
         class="sticky top-0 z-10 flex h-16 items-center justify-between border-b border-default bg-default/95 px-4 backdrop-blur lg:px-8"
       >
@@ -62,7 +62,7 @@ const handleLogout = async () => {
         />
       </header>
 
-      <main class="px-4 py-6 lg:px-8">
+      <main class="min-w-0 px-4 py-6 lg:px-8">
         <slot />
       </main>
     </div>

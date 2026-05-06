@@ -62,8 +62,22 @@ export const generatedDocumentDownloadUrl = (id: number) => {
   return `http://localhost:4000/api/generated-documents/${id}/download`;
 };
 
+export const generatedDocumentPreviewUrl = (id: number) => {
+  return `http://localhost:4000/api/generated-documents/${id}/preview`;
+};
+
+export const fetchGeneratedDocuments = (contractId: number) => {
+  return request<{ documents: GeneratedDocument[] }>(`/api/contracts/${contractId}/generated-documents`);
+};
+
 export const saveGeneratedDocumentToDownloads = (id: number) => {
   return request<{ savedTo: string }>(`/api/generated-documents/${id}/save-to-downloads`, {
+    method: "POST",
+  });
+};
+
+export const openGeneratedDocumentLocation = (id: number) => {
+  return request<{ openedPath: string }>(`/api/generated-documents/${id}/open-location`, {
     method: "POST",
   });
 };

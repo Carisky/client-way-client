@@ -4,10 +4,13 @@ import type { ClientContract } from "../../api/clients.api";
 import {
   attachSignedCopy,
   generatedDocumentDownloadUrl,
+  generatedDocumentPreviewUrl,
   generateContractDocuments,
+  openGeneratedDocumentLocation,
   saveGeneratedDocumentToDownloads,
 } from "../../api/contracts.api";
 import { getAuthToken } from "../../api/http";
+import { useAppToast } from "../../composables/useAppToast";
 import StatusBadge from "../shared/StatusBadge.vue";
 
 defineProps<{
@@ -19,9 +22,9 @@ const emit = defineEmits<{
   generated: [];
 }>();
 
+const toast = useAppToast();
 const generatingIds = ref(new Set<number>());
-const errorMessage = ref("");
-const statusMessage = ref("");
+const savingIds = ref(new Set<number>());
 
 const uploadSignedCopy = async (contractId: number, event: Event) => {
   const input = event.target as HTMLInputElement;
@@ -32,13 +35,12 @@ const uploadSignedCopy = async (contractId: number, event: Event) => {
   }
 
   try {
-    errorMessage.value = "";
-    statusMessage.value = "";
     await attachSignedCopy(contractId, file);
     input.value = "";
+    toast.success("Signed copy attached");
     emit("uploaded");
   } catch (error) {
-    errorMessage.value = error instanceof Error ? error.message : "Signed copy upload failed";
+    toast.error(error, "Signed copy upload failed");
   }
 };
 
@@ -46,12 +48,11 @@ const generateDocuments = async (contractId: number) => {
   generatingIds.value = new Set(generatingIds.value).add(contractId);
 
   try {
-    errorMessage.value = "";
-    statusMessage.value = "";
     await generateContractDocuments(contractId);
+    toast.success("Documents generated");
     emit("generated");
   } catch (error) {
-    errorMessage.value = error instanceof Error ? error.message : "Document generation failed";
+    toast.error(error, "Document generation failed");
   } finally {
     const next = new Set(generatingIds.value);
     next.delete(contractId);
@@ -59,18 +60,43 @@ const generateDocuments = async (contractId: number) => {
   }
 };
 
+const previewGeneratedDocument = async (documentId: number) => {
+  const response = await fetch(generatedDocumentPreviewUrl(documentId), {
+    headers: getAuthToken() ? { Authorization: `Bearer ${getAuthToken()}` } : {},
+  });
+
+  if (!response.ok) {
+    toast.error(new Error("Preview failed"));
+    return;
+  }
+
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
+  window.open(url, "_blank", "noopener,noreferrer");
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
+};
+
 const downloadGeneratedDocument = async (documentId: number, fileName: string) => {
+  savingIds.value = new Set(savingIds.value).add(documentId);
+
   try {
-    errorMessage.value = "";
     const result = await saveGeneratedDocumentToDownloads(documentId);
-    statusMessage.value = `Saved to ${result.savedTo}`;
+    let locationOpened = false;
+    toast.success("File saved", `${result.savedTo}. Click to open location.`, () => {
+      if (locationOpened) {
+        return;
+      }
+
+      locationOpened = true;
+      void openGeneratedLocation(documentId);
+    });
   } catch {
     const response = await fetch(generatedDocumentDownloadUrl(documentId), {
       headers: getAuthToken() ? { Authorization: `Bearer ${getAuthToken()}` } : {},
     });
 
     if (!response.ok) {
-      errorMessage.value = "Download failed";
+      toast.error(new Error("Download failed"));
       return;
     }
 
@@ -81,88 +107,124 @@ const downloadGeneratedDocument = async (documentId: number, fileName: string) =
     link.download = fileName;
     link.click();
     URL.revokeObjectURL(url);
+    toast.success("Download started", fileName);
+  } finally {
+    const next = new Set(savingIds.value);
+    next.delete(documentId);
+    savingIds.value = next;
+  }
+};
+
+const openGeneratedLocation = async (documentId: number) => {
+  try {
+    const result = await openGeneratedDocumentLocation(documentId);
+    toast.success("Opened file location", result.openedPath);
+  } catch (error) {
+    toast.error(error, "Failed to open file location");
   }
 };
 </script>
 
 <template>
-  <div class="overflow-x-auto">
-    <UAlert
-      v-if="errorMessage"
-      class="mb-3"
-      color="error"
-      variant="soft"
-      icon="i-lucide-circle-alert"
-      :title="errorMessage"
-    />
-    <UAlert
-      v-if="statusMessage"
-      class="mb-3"
-      color="success"
-      variant="soft"
-      icon="i-lucide-check"
-      :title="statusMessage"
-    />
-    <table class="min-w-full divide-y divide-default text-sm">
-      <thead>
-        <tr class="text-left text-muted">
-          <th class="py-3 pr-4 font-medium">Number</th>
-          <th class="py-3 pr-4 font-medium">Type</th>
-          <th class="py-3 pr-4 font-medium">Language</th>
-          <th class="py-3 pr-4 font-medium">Signed</th>
-          <th class="py-3 pr-4 font-medium">Valid until</th>
-          <th class="py-3 pr-4 font-medium">Status</th>
-          <th class="py-3 pr-4 font-medium">Generated docs</th>
-          <th class="py-3 text-right font-medium">Signed copy</th>
-        </tr>
-      </thead>
-      <tbody class="divide-y divide-default">
-        <tr v-for="contract in contracts" :key="contract.id">
-          <td class="py-3 pr-4 font-medium text-highlighted">
-            {{ contract.contractNumber ?? "Draft" }}
-          </td>
-          <td class="py-3 pr-4">{{ contract.contractType }}</td>
-          <td class="py-3 pr-4">{{ contract.languageVariant }}</td>
-          <td class="py-3 pr-4">{{ contract.signedAt?.slice(0, 10) ?? "-" }}</td>
-          <td class="py-3 pr-4">{{ contract.validUntil?.slice(0, 10) ?? "-" }}</td>
-          <td class="py-3 pr-4"><StatusBadge :status="contract.status" /></td>
-          <td class="py-3 pr-4">
-            <div class="space-y-2">
-              <UButton
-                size="xs"
-                icon="i-lucide-file-cog"
-                label="Generate docs"
-                variant="outline"
-                :loading="generatingIds.has(contract.id)"
-                @click="generateDocuments(contract.id)"
-              />
-              <div v-if="contract.generatedDocuments?.length" class="flex flex-col gap-1">
-                <button
-                  v-for="document in contract.generatedDocuments"
-                  :key="document.id"
-                  type="button"
-                  class="text-left text-xs text-primary hover:underline"
-                  @click="downloadGeneratedDocument(document.id, document.fileName)"
-                >
-                  {{ document.format }} · {{ document.fileName }}
-                </button>
-              </div>
-              <p v-else class="text-xs text-muted">No files</p>
-            </div>
-          </td>
-          <td class="py-3 text-right">
-            <input
-              type="file"
-              accept="application/pdf,image/*"
-              class="w-48 text-xs"
-              @change="uploadSignedCopy(contract.id, $event)"
+  <div class="min-w-0 divide-y divide-default">
+    <article
+      v-for="contract in contracts"
+      :key="contract.id"
+      class="grid min-w-0 gap-4 py-4 lg:grid-cols-[minmax(160px,1fr)_270px_230px_96px]"
+    >
+      <div class="min-w-0">
+        <p class="truncate font-medium text-highlighted" :title="contract.contractNumber ?? 'Draft'">
+          {{ contract.contractNumber ?? "Draft" }}
+        </p>
+        <div class="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted">
+          <span>{{ contract.contractType }}</span>
+          <span>{{ contract.languageVariant }}</span>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-3 gap-3 text-sm">
+        <div>
+          <p class="text-xs text-muted">Signed</p>
+          <p class="mt-1 text-highlighted">{{ contract.signedAt?.slice(0, 10) ?? "-" }}</p>
+        </div>
+        <div>
+          <p class="text-xs text-muted">Until</p>
+          <p class="mt-1 text-highlighted">{{ contract.validUntil?.slice(0, 10) ?? "-" }}</p>
+        </div>
+        <div>
+          <p class="text-xs text-muted">Status</p>
+          <div class="mt-1"><StatusBadge :status="contract.status" /></div>
+        </div>
+      </div>
+
+      <div class="min-w-0 space-y-2">
+        <div class="flex items-center gap-2">
+          <p class="text-xs font-medium text-muted">Docs</p>
+          <UButton
+            size="xs"
+            icon="i-lucide-file-cog"
+            title="Generate docs"
+            aria-label="Generate docs"
+            variant="outline"
+            square
+            :loading="generatingIds.has(contract.id)"
+            @click="generateDocuments(contract.id)"
+          />
+        </div>
+        <div v-if="contract.generatedDocuments?.length" class="flex min-w-0 flex-col gap-1">
+          <div
+            v-for="document in contract.generatedDocuments"
+            :key="document.id"
+            class="grid min-w-0 grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-1 text-xs"
+          >
+            <span class="truncate text-muted" :title="`${document.format} - ${document.fileName}`">
+              {{ document.format }} - {{ document.fileName }}
+            </span>
+            <UButton
+              v-if="document.format === 'PDF'"
+              size="xs"
+              variant="ghost"
+              icon="i-lucide-eye"
+              title="Preview"
+              aria-label="Preview"
+              square
+              @click="previewGeneratedDocument(document.id)"
             />
-          </td>
-        </tr>
-        <tr v-if="!contracts.length">
-          <td colspan="8" class="py-8 text-center text-muted">No contracts yet</td>
-        </tr>
-      </tbody>
-    </table>
+            <UButton
+              size="xs"
+              variant="ghost"
+              icon="i-lucide-download"
+              title="Save"
+              aria-label="Save"
+              square
+              :loading="savingIds.has(document.id)"
+              @click="downloadGeneratedDocument(document.id, document.fileName)"
+            />
+          </div>
+        </div>
+        <p v-else class="text-xs text-muted">No files</p>
+      </div>
+
+      <div class="min-w-0">
+        <p class="mb-2 text-right text-xs font-medium text-muted">Signed copy</p>
+        <label class="flex justify-end">
+          <input
+            type="file"
+            accept="application/pdf,image/*"
+            class="sr-only"
+            @change="uploadSignedCopy(contract.id, $event)"
+          />
+          <span
+            class="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-md border border-default text-primary hover:bg-muted"
+            title="Attach signed copy"
+            aria-label="Attach signed copy"
+          >
+            <UIcon name="i-lucide-paperclip" class="size-4" />
+          </span>
+        </label>
+      </div>
+    </article>
+
+    <p v-if="!contracts.length" class="py-8 text-center text-sm text-muted">No contracts yet</p>
   </div>
 </template>

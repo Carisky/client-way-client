@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { onMounted, ref } from "vue";
 import { fetchClients, type ClientCompany } from "../api/clients.api";
-import { ApiError } from "../api/http";
 import AppLayout from "../components/layout/AppLayout.vue";
+import { useAppToast } from "../composables/useAppToast";
 
 const clients = ref<ClientCompany[]>([]);
 const search = ref("");
@@ -10,11 +10,10 @@ const contractType = ref("");
 const status = ref("");
 const includeArchived = ref(false);
 const isLoading = ref(false);
-const errorMessage = ref("");
+const toast = useAppToast();
 
 const loadClients = async () => {
   isLoading.value = true;
-  errorMessage.value = "";
 
   try {
     clients.value = (
@@ -26,7 +25,7 @@ const loadClients = async () => {
       })
     ).clients;
   } catch (error) {
-    errorMessage.value = error instanceof ApiError ? error.message : "Failed to load clients";
+    toast.error(error, "Failed to load clients");
   } finally {
     isLoading.value = false;
   }
@@ -82,15 +81,6 @@ onMounted(loadClients);
         </div>
       </div>
     </UCard>
-
-    <UAlert
-      v-if="errorMessage"
-      class="mb-5"
-      color="error"
-      variant="soft"
-      icon="i-lucide-circle-alert"
-      :title="errorMessage"
-    />
 
     <UCard>
       <template #header>

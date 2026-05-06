@@ -3,14 +3,16 @@ import { ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import type { BooleanStatus } from "../api/clients.api";
 import { createOffer } from "../api/offers.api";
-import { ApiError } from "../api/http";
 import AppLayout from "../components/layout/AppLayout.vue";
+import { useAppToast } from "../composables/useAppToast";
+import { fieldErrorsFromApiError, type FieldErrors } from "../utils/formErrors";
 
 const route = useRoute();
 const router = useRouter();
+const toast = useAppToast();
 const clientId = Number(route.params.id);
 const isSaving = ref(false);
-const errorMessage = ref("");
+const fieldErrors = ref<FieldErrors>({});
 
 const form = ref({
   offerNumber: "",
@@ -19,9 +21,11 @@ const form = ref({
   accepted: "" as BooleanStatus | "",
 });
 
+const fieldError = (path: string) => fieldErrors.value[path];
+
 const save = async () => {
   isSaving.value = true;
-  errorMessage.value = "";
+  fieldErrors.value = {};
 
   try {
     await createOffer(clientId, {
@@ -30,9 +34,11 @@ const save = async () => {
       validUntil: form.value.validUntil || null,
       accepted: form.value.accepted || null,
     });
+    toast.success("Offer saved");
     await router.push(`/clients/${clientId}`);
   } catch (error) {
-    errorMessage.value = error instanceof ApiError ? error.message : "Failed to save offer";
+    fieldErrors.value = fieldErrorsFromApiError(error);
+    toast.error(error, "Failed to save offer");
   } finally {
     isSaving.value = false;
   }
@@ -46,28 +52,19 @@ const save = async () => {
       <p class="mt-1 text-sm text-muted">Create an offer for this client before adding contracts.</p>
     </div>
 
-    <UAlert
-      v-if="errorMessage"
-      class="mb-5"
-      color="error"
-      variant="soft"
-      icon="i-lucide-circle-alert"
-      :title="errorMessage"
-    />
-
-    <form class="max-w-2xl space-y-5" @submit.prevent="save">
+    <form class="max-w-2xl space-y-5" novalidate @submit.prevent="save">
       <UCard>
         <div class="grid gap-4 md:grid-cols-2">
-          <UFormField label="Offer number">
+          <UFormField label="Offer number" :error="fieldError('offerNumber')">
             <UInput v-model="form.offerNumber" class="w-full" />
           </UFormField>
-          <UFormField label="Title">
+          <UFormField label="Title" :error="fieldError('title')">
             <UInput v-model="form.title" class="w-full" />
           </UFormField>
-          <UFormField label="Valid until">
+          <UFormField label="Valid until" :error="fieldError('validUntil')">
             <UInput v-model="form.validUntil" type="date" class="w-full" />
           </UFormField>
-          <UFormField label="Accepted">
+          <UFormField label="Accepted" :error="fieldError('accepted')">
             <select v-model="form.accepted" class="h-9 w-full rounded-md border border-default bg-default px-3 text-sm">
               <option value="">Missing</option>
               <option value="YES">YES</option>

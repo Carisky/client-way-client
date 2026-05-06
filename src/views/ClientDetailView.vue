@@ -2,13 +2,14 @@
 import { onMounted, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { archiveClient, fetchClient, type ClientCompany } from "../api/clients.api";
-import { ApiError } from "../api/http";
 import AppLayout from "../components/layout/AppLayout.vue";
 import ContractHistoryTable from "../components/contracts/ContractHistoryTable.vue";
 import StatusBadge from "../components/shared/StatusBadge.vue";
+import { useAppToast } from "../composables/useAppToast";
 
 const route = useRoute();
 const router = useRouter();
+const toast = useAppToast();
 const client = ref<ClientCompany | null>(null);
 const isLoading = ref(false);
 const errorMessage = ref("");
@@ -20,7 +21,8 @@ const loadClient = async () => {
   try {
     client.value = (await fetchClient(Number(route.params.id))).client;
   } catch (error) {
-    errorMessage.value = error instanceof ApiError ? error.message : "Failed to load client";
+    errorMessage.value = error instanceof Error ? error.message : "Failed to load client";
+    toast.error(error, "Failed to load client");
   } finally {
     isLoading.value = false;
   }
@@ -31,8 +33,13 @@ const archive = async () => {
     return;
   }
 
-  await archiveClient(client.value.id);
-  await router.push("/clients");
+  try {
+    await archiveClient(client.value.id);
+    toast.success("Client archived");
+    await router.push("/clients");
+  } catch (error) {
+    toast.error(error, "Failed to archive client");
+  }
 };
 
 onMounted(loadClient);
@@ -41,27 +48,23 @@ onMounted(loadClient);
 <template>
   <AppLayout>
     <div v-if="isLoading" class="py-10 text-center text-muted">Loading client...</div>
-    <UAlert
-      v-else-if="errorMessage"
-      color="error"
-      variant="soft"
-      icon="i-lucide-circle-alert"
-      :title="errorMessage"
-    />
+    <div v-else-if="errorMessage" class="py-10 text-center text-sm text-error">
+      {{ errorMessage }}
+    </div>
 
     <template v-else-if="client">
-      <div class="mb-6 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div>
-          <div class="flex items-center gap-3">
-            <h2 class="text-2xl font-semibold text-highlighted">{{ client.name }}</h2>
+      <div class="mb-6 flex min-w-0 flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div class="min-w-0">
+          <div class="flex min-w-0 flex-wrap items-center gap-3">
+            <h2 class="break-words text-2xl font-semibold text-highlighted">{{ client.name }}</h2>
             <UBadge v-if="client.isArchived" color="neutral" variant="soft">Archived</UBadge>
           </div>
-          <p class="mt-1 text-sm text-muted">
+          <p class="mt-1 break-words text-sm text-muted">
             NIP {{ client.nip ?? "-" }} · EORI {{ client.eori ?? "-" }} · {{ client.email ?? "No email" }}
           </p>
         </div>
 
-        <div class="flex gap-2">
+        <div class="flex flex-wrap gap-2 md:justify-end">
           <UButton :to="`/clients/${client.id}/offers/new`" icon="i-lucide-file-plus-2" label="New offer" />
           <UButton :to="`/clients/${client.id}/edit`" icon="i-lucide-pencil" variant="outline" label="Edit" />
           <UButton
@@ -75,22 +78,22 @@ onMounted(loadClient);
         </div>
       </div>
 
-      <div class="grid gap-5 xl:grid-cols-[1fr_380px]">
-        <div class="space-y-5">
+      <div class="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1fr)_240px] 2xl:grid-cols-[minmax(0,1fr)_260px]">
+        <div class="min-w-0 space-y-5">
           <UCard>
             <template #header><h3 class="font-medium text-highlighted">Offers and contracts</h3></template>
             <div class="space-y-5">
-              <div v-for="offer in client.offers" :key="offer.id" class="rounded-md border border-default p-4">
+              <div v-for="offer in client.offers" :key="offer.id" class="min-w-0 rounded-md border border-default p-4">
                 <div class="mb-4 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-                  <div>
-                    <p class="font-medium text-highlighted">
+                  <div class="min-w-0">
+                    <p class="break-words font-medium text-highlighted">
                       {{ offer.offerNumber ?? offer.title ?? "Offer" }}
                     </p>
                     <p class="text-sm text-muted">
                       Valid until {{ offer.validUntil?.slice(0, 10) ?? "-" }}
                     </p>
                   </div>
-                  <div class="flex items-center gap-2">
+                  <div class="flex flex-wrap items-center gap-2 md:justify-end">
                     <StatusBadge :status="offer.accepted" />
                     <UButton
                       :to="`/offers/${offer.id}/contracts/new`"
@@ -129,46 +132,46 @@ onMounted(loadClient);
           </UCard>
         </div>
 
-        <div class="space-y-5">
-          <UCard>
+        <div class="min-w-0 space-y-4">
+          <UCard :ui="{ body: 'p-4 sm:p-4', header: 'p-4 sm:px-4' }">
             <template #header><h3 class="font-medium text-highlighted">Address</h3></template>
-            <p class="text-sm text-muted">
+            <p class="break-words text-sm text-muted">
               {{ client.address?.street }} {{ client.address?.houseNumber
               }}<template v-if="client.address?.apartmentNumber">/{{ client.address.apartmentNumber }}</template>
             </p>
-            <p class="mt-1 text-sm text-muted">
+            <p class="mt-1 break-words text-sm text-muted">
               {{ client.address?.postalCode }} {{ client.address?.city }}, {{ client.address?.country }}
             </p>
           </UCard>
 
-          <UCard>
+          <UCard :ui="{ body: 'p-4 sm:p-4', header: 'p-4 sm:px-4' }">
             <template #header><h3 class="font-medium text-highlighted">Statuses</h3></template>
             <dl class="space-y-3 text-sm">
-              <div class="flex items-center justify-between gap-3">
+              <div class="space-y-1">
                 <dt class="text-muted">Forwarding order</dt>
                 <dd><StatusBadge :status="client.forwardingOrderSigned" /></dd>
               </div>
-              <div class="flex items-center justify-between gap-3">
+              <div class="space-y-1">
                 <dt class="text-muted">Order valid until</dt>
                 <dd>{{ client.forwardingOrderValidUntil?.slice(0, 10) ?? "-" }}</dd>
               </div>
             </dl>
           </UCard>
 
-          <UCard>
+          <UCard :ui="{ body: 'p-4 sm:p-4', header: 'p-4 sm:px-4' }">
             <template #header><h3 class="font-medium text-highlighted">References</h3></template>
             <dl class="space-y-3 text-sm">
-              <div class="flex justify-between gap-3">
+              <div class="space-y-1">
                 <dt class="text-muted">Comarch client</dt>
-                <dd>{{ client.comarchReference?.clientNumber ?? "-" }}</dd>
+                <dd class="break-words">{{ client.comarchReference?.clientNumber ?? "-" }}</dd>
               </div>
-              <div class="flex justify-between gap-3">
+              <div class="space-y-1">
                 <dt class="text-muted">Comarch ZS</dt>
-                <dd>{{ client.comarchReference?.zsNumber ?? "-" }}</dd>
+                <dd class="break-words">{{ client.comarchReference?.zsNumber ?? "-" }}</dd>
               </div>
-              <div class="flex justify-between gap-3">
+              <div class="space-y-1">
                 <dt class="text-muted">Marketing no.</dt>
-                <dd>{{ client.marketingReference?.internalNumber ?? "-" }}</dd>
+                <dd class="break-words">{{ client.marketingReference?.internalNumber ?? "-" }}</dd>
               </div>
             </dl>
           </UCard>

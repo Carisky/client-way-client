@@ -1,16 +1,21 @@
 <script setup lang="ts">
 import { onMounted, ref } from "vue";
-import { ApiError } from "../api/http";
 import type { User, UserRole } from "../api/auth.api";
 import { createUserRequest, deactivateUserRequest, listUsersRequest } from "../api/users.api";
 import AppLayout from "../components/layout/AppLayout.vue";
+import { useAppToast } from "../composables/useAppToast";
+import {
+  fieldErrorsFromApiError,
+  setFieldError,
+  type FieldErrors,
+} from "../utils/formErrors";
 
 const roles: UserRole[] = ["ADMIN", "MANAGER", "USER", "READONLY"];
 
+const toast = useAppToast();
 const users = ref<User[]>([]);
 const isLoading = ref(false);
-const errorMessage = ref("");
-const successMessage = ref("");
+const fieldErrors = ref<FieldErrors>({});
 const form = ref({
   email: "",
   password: "",
@@ -18,22 +23,46 @@ const form = ref({
   role: "USER" as UserRole,
 });
 
+const fieldError = (path: string) => fieldErrors.value[path];
+
+const validateForm = () => {
+  let errors: FieldErrors = {};
+
+  if (form.value.fullName.trim().length < 2) {
+    errors = setFieldError(errors, "fullName", "Full name must contain at least 2 characters");
+  }
+
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.value.email.trim())) {
+    errors = setFieldError(errors, "email", "Invalid email address");
+  }
+
+  if (form.value.password.length < 8) {
+    errors = setFieldError(errors, "password", "Password must contain at least 8 characters");
+  }
+
+  fieldErrors.value = errors;
+  return Object.keys(errors).length === 0;
+};
+
 const loadUsers = async () => {
   isLoading.value = true;
-  errorMessage.value = "";
 
   try {
     users.value = (await listUsersRequest()).users;
   } catch (error) {
-    errorMessage.value = error instanceof ApiError ? error.message : "Failed to load users";
+    toast.error(error, "Failed to load users");
   } finally {
     isLoading.value = false;
   }
 };
 
 const createUser = async () => {
-  errorMessage.value = "";
-  successMessage.value = "";
+  fieldErrors.value = {};
+
+  if (!validateForm()) {
+    toast.error(new Error("Fix highlighted fields"));
+    return;
+  }
 
   try {
     await createUserRequest(form.value);
@@ -43,16 +72,22 @@ const createUser = async () => {
       fullName: "",
       role: "USER",
     };
-    successMessage.value = "User created";
+    toast.success("User created");
     await loadUsers();
   } catch (error) {
-    errorMessage.value = error instanceof ApiError ? error.message : "Failed to create user";
+    fieldErrors.value = fieldErrorsFromApiError(error);
+    toast.error(error, "Failed to create user");
   }
 };
 
 const deactivateUser = async (id: number) => {
-  await deactivateUserRequest(id);
-  await loadUsers();
+  try {
+    await deactivateUserRequest(id);
+    toast.success("User deactivated");
+    await loadUsers();
+  } catch (error) {
+    toast.error(error, "Failed to deactivate user");
+  }
 };
 
 onMounted(loadUsers);
@@ -69,36 +104,21 @@ onMounted(loadUsers);
       <UButton icon="i-lucide-refresh-cw" label="Refresh" variant="outline" @click="loadUsers" />
     </div>
 
-    <div class="grid gap-5 xl:grid-cols-[380px_1fr]">
+    <div class="grid min-w-0 gap-5 xl:grid-cols-[380px_minmax(0,1fr)]">
       <UCard>
         <template #header>
           <h3 class="font-medium text-highlighted">New user</h3>
         </template>
 
-        <form class="space-y-4" @submit.prevent="createUser">
-          <UAlert
-            v-if="errorMessage"
-            color="error"
-            variant="soft"
-            icon="i-lucide-circle-alert"
-            :title="errorMessage"
-          />
-          <UAlert
-            v-if="successMessage"
-            color="success"
-            variant="soft"
-            icon="i-lucide-check"
-            :title="successMessage"
-          />
-
-          <UFormField label="Full name">
-            <UInput v-model="form.fullName" class="w-full" required />
+        <form class="space-y-4" novalidate @submit.prevent="createUser">
+          <UFormField label="Full name" :error="fieldError('fullName')">
+            <UInput v-model="form.fullName" class="w-full" />
           </UFormField>
-          <UFormField label="Email">
-            <UInput v-model="form.email" type="email" class="w-full" required />
+          <UFormField label="Email" :error="fieldError('email')">
+            <UInput v-model="form.email" type="email" class="w-full" />
           </UFormField>
-          <UFormField label="Password">
-            <UInput v-model="form.password" type="password" class="w-full" required />
+          <UFormField label="Password" :error="fieldError('password')">
+            <UInput v-model="form.password" type="password" class="w-full" />
           </UFormField>
           <UFormField label="Role">
             <select
@@ -113,7 +133,7 @@ onMounted(loadUsers);
         </form>
       </UCard>
 
-      <UCard>
+      <UCard class="min-w-0">
         <template #header>
           <div class="flex items-center justify-between">
             <h3 class="font-medium text-highlighted">Employee accounts</h3>

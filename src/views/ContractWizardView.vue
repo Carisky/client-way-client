@@ -4,16 +4,17 @@ import { useRoute, useRouter } from "vue-router";
 import type { ContractType, LanguageVariant } from "../api/clients.api";
 import { confirmContract, createContractDraft } from "../api/contracts.api";
 import { fetchOffer } from "../api/offers.api";
-import { ApiError } from "../api/http";
 import AppLayout from "../components/layout/AppLayout.vue";
+import { useAppToast } from "../composables/useAppToast";
+import { fieldErrorsFromApiError, type FieldErrors } from "../utils/formErrors";
 
 const route = useRoute();
 const router = useRouter();
+const toast = useAppToast();
 const offerId = Number(route.params.offerId);
 const clientId = ref<number | null>(null);
 const isSaving = ref(false);
-const errorMessage = ref("");
-const createdNumber = ref("");
+const fieldErrors = ref<FieldErrors>({});
 
 const form = ref({
   contractType: "STANDARD" as ContractType,
@@ -36,9 +37,11 @@ const languages: Array<{ value: LanguageVariant; label: string }> = [
   { value: "PL_UA", label: "Polish + Ukrainian" },
 ];
 
+const fieldError = (path: string) => fieldErrors.value[path];
+
 const save = async () => {
   isSaving.value = true;
-  errorMessage.value = "";
+  fieldErrors.value = {};
 
   try {
     const draft = await createContractDraft(offerId, {
@@ -48,10 +51,11 @@ const save = async () => {
       validUntil: form.value.validUntil || null,
     });
     const confirmed = await confirmContract(draft.contract.id);
-    createdNumber.value = confirmed.contract.contractNumber ?? "";
+    toast.success(`Contract ${confirmed.contract.contractNumber ?? ""} created`);
     await router.push(clientId.value ? `/clients/${clientId.value}` : "/clients");
   } catch (error) {
-    errorMessage.value = error instanceof ApiError ? error.message : "Failed to create contract";
+    fieldErrors.value = fieldErrorsFromApiError(error);
+    toast.error(error, "Failed to create contract");
   } finally {
     isSaving.value = false;
   }
@@ -61,7 +65,7 @@ fetchOffer(offerId)
   .then(({ offer }) => {
     clientId.value = offer.clientCompanyId;
   })
-  .catch(() => undefined);
+  .catch((error) => toast.error(error, "Failed to load offer"));
 </script>
 
 <template>
@@ -71,24 +75,7 @@ fetchOffer(offerId)
       <p class="mt-1 text-sm text-muted">Select contract type, language variant and dates.</p>
     </div>
 
-    <UAlert
-      v-if="errorMessage"
-      class="mb-5"
-      color="error"
-      variant="soft"
-      icon="i-lucide-circle-alert"
-      :title="errorMessage"
-    />
-    <UAlert
-      v-if="createdNumber"
-      class="mb-5"
-      color="success"
-      variant="soft"
-      icon="i-lucide-check"
-      :title="`Contract ${createdNumber} created`"
-    />
-
-    <form class="max-w-3xl space-y-5" @submit.prevent="save">
+    <form class="max-w-3xl space-y-5" novalidate @submit.prevent="save">
       <UCard>
         <template #header><h3 class="font-medium text-highlighted">Contract type</h3></template>
         <div class="grid gap-3 md:grid-cols-2">
@@ -120,8 +107,12 @@ fetchOffer(offerId)
       <UCard>
         <template #header><h3 class="font-medium text-highlighted">Dates</h3></template>
         <div class="grid gap-4 md:grid-cols-2">
-          <UFormField label="Signed at"><UInput v-model="form.signedAt" type="date" class="w-full" /></UFormField>
-          <UFormField label="Valid until"><UInput v-model="form.validUntil" type="date" class="w-full" /></UFormField>
+          <UFormField label="Signed at" :error="fieldError('signedAt')">
+            <UInput v-model="form.signedAt" type="date" class="w-full" />
+          </UFormField>
+          <UFormField label="Valid until" :error="fieldError('validUntil')">
+            <UInput v-model="form.validUntil" type="date" class="w-full" />
+          </UFormField>
         </div>
       </UCard>
 
