@@ -11,6 +11,7 @@ import {
 } from "../../api/contracts.api";
 import { getAuthToken } from "../../api/http";
 import { useAppToast } from "../../composables/useAppToast";
+import { useI18n } from "../../i18n";
 import StatusBadge from "../shared/StatusBadge.vue";
 
 defineProps<{
@@ -23,6 +24,7 @@ const emit = defineEmits<{
 }>();
 
 const toast = useAppToast();
+const { t } = useI18n();
 const generatingIds = ref(new Set<number>());
 const savingIds = ref(new Set<number>());
 
@@ -82,7 +84,7 @@ const downloadGeneratedDocument = async (documentId: number, fileName: string) =
   try {
     const result = await saveGeneratedDocumentToDownloads(documentId);
     let locationOpened = false;
-    toast.success("File saved", `${result.savedTo}. Click to open location.`, () => {
+    toast.success("File saved", t("{path}. Click to open location.", { path: result.savedTo }), () => {
       if (locationOpened) {
         return;
       }
@@ -133,8 +135,8 @@ const openGeneratedLocation = async (documentId: number) => {
       class="grid min-w-0 gap-4 py-4 lg:grid-cols-[minmax(160px,1fr)_270px_230px_96px]"
     >
       <div class="min-w-0">
-        <p class="truncate font-medium text-highlighted" :title="contract.contractNumber ?? 'Draft'">
-          {{ contract.contractNumber ?? "Draft" }}
+        <p class="truncate font-medium text-highlighted" :title="contract.contractNumber ?? t('Draft')">
+          {{ contract.contractNumber ?? t("Draft") }}
         </p>
         <div class="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted">
           <span>{{ contract.contractType }}</span>
@@ -144,27 +146,27 @@ const openGeneratedLocation = async (documentId: number) => {
 
       <div class="grid grid-cols-3 gap-3 text-sm">
         <div>
-          <p class="text-xs text-muted">Signed</p>
+          <p class="text-xs text-muted">{{ t("Signed") }}</p>
           <p class="mt-1 text-highlighted">{{ contract.signedAt?.slice(0, 10) ?? "-" }}</p>
         </div>
         <div>
-          <p class="text-xs text-muted">Until</p>
+          <p class="text-xs text-muted">{{ t("Until") }}</p>
           <p class="mt-1 text-highlighted">{{ contract.validUntil?.slice(0, 10) ?? "-" }}</p>
         </div>
         <div>
-          <p class="text-xs text-muted">Status</p>
+          <p class="text-xs text-muted">{{ t("Status") }}</p>
           <div class="mt-1"><StatusBadge :status="contract.status" /></div>
         </div>
       </div>
 
       <div class="min-w-0 space-y-2">
         <div class="flex items-center gap-2">
-          <p class="text-xs font-medium text-muted">Docs</p>
+          <p class="text-xs font-medium text-muted">{{ t("Docs") }}</p>
           <UButton
             size="xs"
             icon="i-lucide-file-cog"
-            title="Generate docs"
-            aria-label="Generate docs"
+            :title="t('Generate docs')"
+            :aria-label="t('Generate docs')"
             variant="outline"
             square
             :loading="generatingIds.has(contract.id)"
@@ -185,8 +187,8 @@ const openGeneratedLocation = async (documentId: number) => {
               size="xs"
               variant="ghost"
               icon="i-lucide-eye"
-              title="Preview"
-              aria-label="Preview"
+              :title="t('Preview')"
+              :aria-label="t('Preview')"
               square
               @click="previewGeneratedDocument(document.id)"
             />
@@ -194,19 +196,19 @@ const openGeneratedLocation = async (documentId: number) => {
               size="xs"
               variant="ghost"
               icon="i-lucide-download"
-              title="Save"
-              aria-label="Save"
+              :title="t('Save')"
+              :aria-label="t('Save')"
               square
               :loading="savingIds.has(document.id)"
               @click="downloadGeneratedDocument(document.id, document.fileName)"
             />
           </div>
         </div>
-        <p v-else class="text-xs text-muted">No files</p>
+        <p v-else class="text-xs text-muted">{{ t("No files") }}</p>
       </div>
 
       <div class="min-w-0">
-        <p class="mb-2 text-right text-xs font-medium text-muted">Signed copy</p>
+        <p class="mb-2 text-right text-xs font-medium text-muted">{{ t("Signed copy") }}</p>
         <label class="flex justify-end">
           <input
             type="file"
@@ -216,8 +218,8 @@ const openGeneratedLocation = async (documentId: number) => {
           />
           <span
             class="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-md border border-default text-primary hover:bg-muted"
-            title="Attach signed copy"
-            aria-label="Attach signed copy"
+            :title="t('Attach signed copy')"
+            :aria-label="t('Attach signed copy')"
           >
             <UIcon name="i-lucide-paperclip" class="size-4" />
           </span>
@@ -225,6 +227,6 @@ const openGeneratedLocation = async (documentId: number) => {
       </div>
     </article>
 
-    <p v-if="!contracts.length" class="py-8 text-center text-sm text-muted">No contracts yet</p>
+    <p v-if="!contracts.length" class="py-8 text-center text-sm text-muted">{{ t("No contracts yet") }}</p>
   </div>
 </template>

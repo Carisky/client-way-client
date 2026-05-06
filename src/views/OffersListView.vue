@@ -7,8 +7,10 @@ import ExpirationCell from "../components/shared/ExpirationCell.vue";
 import StatusBadge from "../components/shared/StatusBadge.vue";
 import { useAppToast } from "../composables/useAppToast";
 import type { ExpirationState } from "../api/dashboard.api";
+import { useI18n } from "../i18n";
 
 const toast = useAppToast();
+const { t } = useI18n();
 const offers = ref<Offer[]>([]);
 const isLoading = ref(false);
 const search = ref("");
@@ -76,66 +78,66 @@ onMounted(loadOffers);
 <template>
   <AppLayout>
     <div class="mb-6">
-      <h2 class="text-2xl font-semibold text-highlighted">Offers</h2>
-      <p class="mt-1 text-sm text-muted">Search all client offers and track validity dates.</p>
+      <h2 class="text-2xl font-semibold text-highlighted">{{ t("Offers") }}</h2>
+      <p class="mt-1 text-sm text-muted">{{ t("Search all client offers and track validity dates.") }}</p>
     </div>
 
     <UCard class="mb-5">
       <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-[1fr_170px_170px_120px_auto] xl:items-end">
-        <UFormField label="Search">
+        <UFormField :label="t('Search')">
           <UInput
             v-model="search"
             icon="i-lucide-search"
-            placeholder="Offer number, title, client name, NIP"
+            :placeholder="t('Offer number, title, client name, NIP')"
             class="w-full"
             @keyup.enter="loadOffers"
           />
         </UFormField>
-        <UFormField label="Accepted">
+        <UFormField :label="t('Accepted')">
           <select v-model="accepted" class="h-9 w-full rounded-md border border-default bg-default px-3 text-sm">
-            <option v-for="item in acceptedOptions" :key="item.label" :value="item.value">{{ item.label }}</option>
+            <option v-for="item in acceptedOptions" :key="item.label" :value="item.value">{{ t(item.label) }}</option>
           </select>
         </UFormField>
-        <UFormField label="Sort by">
+        <UFormField :label="t('Sort by')">
           <select v-model="sortBy" class="h-9 w-full rounded-md border border-default bg-default px-3 text-sm">
-            <option v-for="item in sortOptions" :key="item.value" :value="item.value">{{ item.label }}</option>
+            <option v-for="item in sortOptions" :key="item.value" :value="item.value">{{ t(item.label) }}</option>
           </select>
         </UFormField>
-        <UFormField label="Direction">
+        <UFormField :label="t('Direction')">
           <select v-model="sortDir" class="h-9 w-full rounded-md border border-default bg-default px-3 text-sm">
-            <option value="desc">Desc</option>
-            <option value="asc">Asc</option>
+            <option value="desc">{{ t("Desc") }}</option>
+            <option value="asc">{{ t("Asc") }}</option>
           </select>
         </UFormField>
-        <UButton icon="i-lucide-filter" label="Apply" variant="outline" @click="loadOffers" />
+        <UButton icon="i-lucide-filter" :label="t('Apply')" variant="outline" @click="loadOffers" />
       </div>
     </UCard>
 
     <UCard>
       <template #header>
         <div class="flex items-center justify-between">
-          <h3 class="font-medium text-highlighted">Offer database</h3>
+          <h3 class="font-medium text-highlighted">{{ t("Offer database") }}</h3>
           <UBadge color="neutral" variant="soft">{{ offers.length }}</UBadge>
         </div>
       </template>
 
-      <div v-if="isLoading" class="py-10 text-center text-sm text-muted">Loading offers...</div>
+      <div v-if="isLoading" class="py-10 text-center text-sm text-muted">{{ t("Loading offers...") }}</div>
       <div v-else class="overflow-x-auto">
         <table class="min-w-full divide-y divide-default text-sm">
           <thead>
             <tr class="text-left text-muted">
-              <th class="py-3 pr-4 font-medium">Offer</th>
-              <th class="py-3 pr-4 font-medium">Client</th>
-              <th class="py-3 pr-4 font-medium">Accepted</th>
-              <th class="py-3 pr-4 font-medium">Contracts</th>
-              <th class="py-3 pr-4 font-medium">Valid until</th>
-              <th class="py-3 text-right font-medium">Actions</th>
+              <th class="py-3 pr-4 font-medium">{{ t("Offer") }}</th>
+              <th class="py-3 pr-4 font-medium">{{ t("Client") }}</th>
+              <th class="py-3 pr-4 font-medium">{{ t("Accepted") }}</th>
+              <th class="py-3 pr-4 font-medium">{{ t("Contracts") }}</th>
+              <th class="py-3 pr-4 font-medium">{{ t("Valid until") }}</th>
+              <th class="py-3 text-right font-medium">{{ t("Actions") }}</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-default">
             <tr v-for="offer in offers" :key="offer.id">
               <td class="py-3 pr-4">
-                <p class="font-medium text-highlighted">{{ offer.offerNumber ?? offer.title ?? "Offer" }}</p>
+                <p class="font-medium text-highlighted">{{ offer.offerNumber ?? offer.title ?? t("Offer") }}</p>
                 <p class="text-xs text-muted">{{ offer.title ?? "-" }}</p>
               </td>
               <td class="py-3 pr-4">
@@ -159,16 +161,16 @@ onMounted(loadOffers);
                     :to="`/offers/${offer.id}/contracts/new`"
                     size="xs"
                     icon="i-lucide-file-plus-2"
-                    aria-label="New contract"
-                    title="New contract"
+                    :aria-label="t('New contract')"
+                    :title="t('New contract')"
                     square
                   />
-                  <UButton :to="`/clients/${offer.clientCompany.id}`" size="xs" icon="i-lucide-arrow-right" label="Open" />
+                  <UButton :to="`/clients/${offer.clientCompany.id}`" size="xs" icon="i-lucide-arrow-right" :label="t('Open')" />
                 </div>
               </td>
             </tr>
             <tr v-if="!offers.length">
-              <td colspan="6" class="py-10 text-center text-muted">No offers found</td>
+              <td colspan="6" class="py-10 text-center text-muted">{{ t("No offers found") }}</td>
             </tr>
           </tbody>
         </table>

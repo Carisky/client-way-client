@@ -15,6 +15,7 @@ declare module 'vue' {
     ContractHistoryTable: typeof import('./src/components/contracts/ContractHistoryTable.vue')['default']
     ExpirationCell: typeof import('./src/components/shared/ExpirationCell.vue')['default']
     ExpiringItemsTable: typeof import('./src/components/dashboard/ExpiringItemsTable.vue')['default']
+    LanguageSelect: typeof import('./src/components/shared/LanguageSelect.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
     StatusBadge: typeof import('./src/components/shared/StatusBadge.vue')['default']

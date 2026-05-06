@@ -1,11 +1,14 @@
 <script setup lang="ts">
 import type { ExpirationState } from "../../api/dashboard.api";
+import { useI18n } from "../../i18n";
 
 defineProps<{
   state: ExpirationState;
   daysUntil: number | null;
   dueAt: string | null;
 }>();
+
+const { t } = useI18n();
 
 const labels: Record<ExpirationState, string> = {
   EXPIRED: "Expired",
@@ -24,24 +27,24 @@ const colors: Record<ExpirationState, "error" | "warning" | "success" | "neutral
 const dueLabel = (value: string | null) => value?.slice(0, 10) ?? "-";
 const daysLabel = (days: number | null) => {
   if (days === null) {
-    return "No date";
+    return t("No date");
   }
 
   if (days < 0) {
-    return `${Math.abs(days)}d overdue`;
+    return `${Math.abs(days)}${t("d overdue")}`;
   }
 
   if (days === 0) {
-    return "Today";
+    return t("Today");
   }
 
-  return `${days}d left`;
+  return `${days}${t("d left")}`;
 };
 </script>
 
 <template>
   <div class="space-y-1">
-    <UBadge :color="colors[state]" variant="soft">{{ labels[state] }}</UBadge>
-    <p class="text-xs text-muted">{{ dueLabel(dueAt) }} · {{ daysLabel(daysUntil) }}</p>
+    <UBadge :color="colors[state]" variant="soft">{{ t(labels[state]) }}</UBadge>
+    <p class="text-xs text-muted">{{ dueLabel(dueAt) }} &middot; {{ daysLabel(daysUntil) }}</p>
   </div>
 </template>

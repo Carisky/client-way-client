@@ -2,6 +2,8 @@
 import { ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useAppToast } from "../composables/useAppToast";
+import LanguageSelect from "../components/shared/LanguageSelect.vue";
+import { useI18n } from "../i18n";
 import { useAuthStore } from "../stores/auth.store";
 import { setFieldError, type FieldErrors } from "../utils/formErrors";
 
@@ -9,6 +11,7 @@ const auth = useAuthStore();
 const route = useRoute();
 const router = useRouter();
 const toast = useAppToast();
+const { t } = useI18n();
 
 const email = ref("");
 const password = ref("");
@@ -20,11 +23,11 @@ const validateForm = () => {
   let errors: FieldErrors = {};
 
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value.trim())) {
-    errors = setFieldError(errors, "email", "Invalid email address");
+    errors = setFieldError(errors, "email", t("Invalid email address"));
   }
 
   if (!password.value) {
-    errors = setFieldError(errors, "password", "Password is required");
+    errors = setFieldError(errors, "password", t("Password is required"));
   }
 
   fieldErrors.value = errors;
@@ -52,24 +55,27 @@ const submit = async () => {
   <main class="grid min-h-screen grid-cols-1 overflow-x-hidden bg-default lg:grid-cols-[1fr_420px]">
     <section class="hidden border-r border-default bg-muted px-12 py-10 lg:flex lg:flex-col">
       <div>
-        <p class="text-sm font-medium text-muted">Client Way</p>
+        <div class="flex items-center justify-between gap-3">
+          <p class="text-sm font-medium text-muted">{{ t("Client Way") }}</p>
+          <LanguageSelect />
+        </div>
         <h1 class="mt-3 max-w-xl text-4xl font-semibold tracking-normal text-highlighted">
-          Employee access for contract and document workflows
+          {{ t("Employee access for contract and document workflows") }}
         </h1>
       </div>
 
       <div class="mt-auto grid grid-cols-3 gap-3">
         <UCard>
           <p class="text-2xl font-semibold text-highlighted">Auth</p>
-          <p class="mt-1 text-sm text-muted">Named accounts</p>
+          <p class="mt-1 text-sm text-muted">{{ t("Named accounts") }}</p>
         </UCard>
         <UCard>
           <p class="text-2xl font-semibold text-highlighted">API</p>
-          <p class="mt-1 text-sm text-muted">JWT protected</p>
+          <p class="mt-1 text-sm text-muted">{{ t("JWT protected") }}</p>
         </UCard>
         <UCard>
           <p class="text-2xl font-semibold text-highlighted">UI</p>
-          <p class="mt-1 text-sm text-muted">Nuxt UI shell</p>
+          <p class="mt-1 text-sm text-muted">{{ t("Nuxt UI shell") }}</p>
         </UCard>
       </div>
     </section>
@@ -78,17 +84,22 @@ const submit = async () => {
       <UCard class="w-full max-w-md">
         <template #header>
           <div>
-            <h2 class="text-xl font-semibold text-highlighted">Sign in</h2>
-            <p class="mt-1 text-sm text-muted">Use your employee account.</p>
+            <div class="flex items-start justify-between gap-3">
+              <div>
+                <h2 class="text-xl font-semibold text-highlighted">{{ t("Sign in") }}</h2>
+                <p class="mt-1 text-sm text-muted">{{ t("Use your employee account.") }}</p>
+              </div>
+              <div class="lg:hidden"><LanguageSelect /></div>
+            </div>
           </div>
         </template>
 
         <form class="space-y-4" novalidate @submit.prevent="submit">
-          <UFormField label="Email" :error="fieldError('email')">
+          <UFormField :label="t('Email')" :error="fieldError('email')">
             <UInput v-model="email" type="email" autocomplete="email" class="w-full" />
           </UFormField>
 
-          <UFormField label="Password" :error="fieldError('password')">
+          <UFormField :label="t('Password')" :error="fieldError('password')">
             <UInput
               v-model="password"
               type="password"
@@ -99,7 +110,7 @@ const submit = async () => {
 
           <UButton
             type="submit"
-            label="Login"
+            :label="t('Login')"
             icon="i-lucide-log-in"
             block
             :loading="auth.state.isLoading"

@@ -6,10 +6,12 @@ import { fetchContracts, type Contract, type ContractListFilters } from "../api/
 import AppLayout from "../components/layout/AppLayout.vue";
 import StatusBadge from "../components/shared/StatusBadge.vue";
 import { useAppToast } from "../composables/useAppToast";
+import { useI18n } from "../i18n";
 
 const route = useRoute();
 const router = useRouter();
 const toast = useAppToast();
+const { t } = useI18n();
 
 const contracts = ref<Contract[]>([]);
 const isLoading = ref(false);
@@ -80,74 +82,74 @@ onMounted(loadContracts);
   <AppLayout>
     <div class="mb-6 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
       <div>
-        <h2 class="text-2xl font-semibold text-highlighted">Contracts</h2>
-        <p class="mt-1 text-sm text-muted">Search all contracts without opening every client card.</p>
+        <h2 class="text-2xl font-semibold text-highlighted">{{ t("Contracts") }}</h2>
+        <p class="mt-1 text-sm text-muted">{{ t("Search all contracts without opening every client card.") }}</p>
       </div>
     </div>
 
     <UCard class="mb-5">
       <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-[1fr_170px_170px_170px_120px_auto] xl:items-end">
-        <UFormField label="Search">
+        <UFormField :label="t('Search')">
           <UInput
             v-model="search"
             icon="i-lucide-search"
-            placeholder="Number, client name, NIP"
+            :placeholder="t('Number, client name, NIP')"
             class="w-full"
             @keyup.enter="applyFilters"
           />
         </UFormField>
-        <UFormField label="Type">
+        <UFormField :label="t('Type')">
           <select v-model="contractType" class="h-9 w-full rounded-md border border-default bg-default px-3 text-sm">
-            <option v-for="type in contractTypes" :key="type || 'all'" :value="type">{{ type || "Any" }}</option>
+            <option v-for="type in contractTypes" :key="type || 'all'" :value="type">{{ type || t("Any") }}</option>
           </select>
         </UFormField>
-        <UFormField label="Status">
+        <UFormField :label="t('Status')">
           <select v-model="status" class="h-9 w-full rounded-md border border-default bg-default px-3 text-sm">
-            <option v-for="item in statuses" :key="item || 'all'" :value="item">{{ item || "Any" }}</option>
+            <option v-for="item in statuses" :key="item || 'all'" :value="item">{{ item ? t(item) : t("Any") }}</option>
           </select>
         </UFormField>
-        <UFormField label="Sort by">
+        <UFormField :label="t('Sort by')">
           <select v-model="sortBy" class="h-9 w-full rounded-md border border-default bg-default px-3 text-sm">
-            <option v-for="item in sortOptions" :key="item.value" :value="item.value">{{ item.label }}</option>
+            <option v-for="item in sortOptions" :key="item.value" :value="item.value">{{ t(item.label) }}</option>
           </select>
         </UFormField>
-        <UFormField label="Direction">
+        <UFormField :label="t('Direction')">
           <select v-model="sortDir" class="h-9 w-full rounded-md border border-default bg-default px-3 text-sm">
-            <option value="desc">Desc</option>
-            <option value="asc">Asc</option>
+            <option value="desc">{{ t("Desc") }}</option>
+            <option value="asc">{{ t("Asc") }}</option>
           </select>
         </UFormField>
-        <UButton icon="i-lucide-filter" label="Apply" variant="outline" @click="applyFilters" />
+        <UButton icon="i-lucide-filter" :label="t('Apply')" variant="outline" @click="applyFilters" />
       </div>
     </UCard>
 
     <UCard>
       <template #header>
         <div class="flex items-center justify-between">
-          <h3 class="font-medium text-highlighted">Contract database</h3>
+          <h3 class="font-medium text-highlighted">{{ t("Contract database") }}</h3>
           <UBadge color="neutral" variant="soft">{{ contracts.length }}</UBadge>
         </div>
       </template>
 
-      <div v-if="isLoading" class="py-10 text-center text-sm text-muted">Loading contracts...</div>
+      <div v-if="isLoading" class="py-10 text-center text-sm text-muted">{{ t("Loading contracts...") }}</div>
       <div v-else class="overflow-x-auto">
         <table class="min-w-full divide-y divide-default text-sm">
           <thead>
             <tr class="text-left text-muted">
-              <th class="py-3 pr-4 font-medium">Number</th>
-              <th class="py-3 pr-4 font-medium">Client</th>
-              <th class="py-3 pr-4 font-medium">Type</th>
-              <th class="py-3 pr-4 font-medium">Signed</th>
-              <th class="py-3 pr-4 font-medium">Valid until</th>
-              <th class="py-3 pr-4 font-medium">Status</th>
-              <th class="py-3 pr-4 font-medium">Docs</th>
-              <th class="py-3 text-right font-medium">Actions</th>
+              <th class="py-3 pr-4 font-medium">{{ t("Number") }}</th>
+              <th class="py-3 pr-4 font-medium">{{ t("Client") }}</th>
+              <th class="py-3 pr-4 font-medium">{{ t("Type") }}</th>
+              <th class="py-3 pr-4 font-medium">{{ t("Signed") }}</th>
+              <th class="py-3 pr-4 font-medium">{{ t("Valid until") }}</th>
+              <th class="py-3 pr-4 font-medium">{{ t("Status") }}</th>
+              <th class="py-3 pr-4 font-medium">{{ t("Docs") }}</th>
+              <th class="py-3 text-right font-medium">{{ t("Actions") }}</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-default">
             <tr v-for="contract in contracts" :key="contract.id">
               <td class="py-3 pr-4 font-medium text-highlighted">
-                {{ contract.contractNumber ?? "Draft" }}
+                {{ contract.contractNumber ?? t("Draft") }}
               </td>
               <td class="py-3 pr-4">
                 <RouterLink
@@ -171,12 +173,12 @@ onMounted(loadContracts);
                   :to="`/contracts/${contract.id}`"
                   size="xs"
                   icon="i-lucide-arrow-right"
-                  label="Open"
+                  :label="t('Open')"
                 />
               </td>
             </tr>
             <tr v-if="!contracts.length">
-              <td colspan="8" class="py-10 text-center text-muted">No contracts found</td>
+              <td colspan="8" class="py-10 text-center text-muted">{{ t("No contracts found") }}</td>
             </tr>
           </tbody>
         </table>

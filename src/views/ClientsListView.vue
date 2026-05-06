@@ -3,6 +3,7 @@ import { onMounted, ref } from "vue";
 import { fetchClients, type ClientCompany } from "../api/clients.api";
 import AppLayout from "../components/layout/AppLayout.vue";
 import { useAppToast } from "../composables/useAppToast";
+import { useI18n } from "../i18n";
 
 const clients = ref<ClientCompany[]>([]);
 const search = ref("");
@@ -11,6 +12,7 @@ const status = ref("");
 const includeArchived = ref(false);
 const isLoading = ref(false);
 const toast = useAppToast();
+const { t } = useI18n();
 
 const loadClients = async () => {
   isLoading.value = true;
@@ -38,36 +40,36 @@ onMounted(loadClients);
   <AppLayout>
     <div class="mb-6 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
       <div>
-        <h2 class="text-2xl font-semibold text-highlighted">Clients</h2>
-        <p class="mt-1 text-sm text-muted">Search company records and contract history.</p>
+        <h2 class="text-2xl font-semibold text-highlighted">{{ t("Clients") }}</h2>
+        <p class="mt-1 text-sm text-muted">{{ t("Search company records and contract history.") }}</p>
       </div>
 
-      <UButton to="/clients/new" icon="i-lucide-building-2" label="New client" />
+      <UButton to="/clients/new" icon="i-lucide-building-2" :label="t('New client')" />
     </div>
 
     <UCard class="mb-5">
       <div class="grid gap-3 md:grid-cols-[1fr_170px_170px_auto] md:items-end">
-        <UFormField label="Search">
+        <UFormField :label="t('Search')">
           <UInput
             v-model="search"
             icon="i-lucide-search"
-            placeholder="Name, NIP, REGON, KRS, EORI, email"
+            :placeholder="t('Name, NIP, REGON, KRS, EORI, email')"
             class="w-full"
             @keyup.enter="loadClients"
           />
         </UFormField>
-        <UFormField label="Type">
+        <UFormField :label="t('Type')">
           <select v-model="contractType" class="h-9 w-full rounded-md border border-default bg-default px-3 text-sm">
-            <option value="">Any</option>
+            <option value="">{{ t("Any") }}</option>
             <option value="STANDARD">STANDARD</option>
             <option value="IMPORT_33A">IMPORT_33A</option>
             <option value="CBAM">CBAM</option>
             <option value="SENT">SENT</option>
           </select>
         </UFormField>
-        <UFormField label="Status">
+        <UFormField :label="t('Status')">
           <select v-model="status" class="h-9 w-full rounded-md border border-default bg-default px-3 text-sm">
-            <option value="">Any</option>
+            <option value="">{{ t("Any") }}</option>
             <option value="DRAFT">DRAFT</option>
             <option value="GENERATED">GENERATED</option>
             <option value="SIGNED">SIGNED</option>
@@ -76,7 +78,7 @@ onMounted(loadClients);
           </select>
         </UFormField>
         <div class="flex items-center gap-3">
-          <UCheckbox v-model="includeArchived" label="Archived" />
+          <UCheckbox v-model="includeArchived" :label="t('Archived')" />
           <UButton icon="i-lucide-filter" variant="outline" @click="loadClients" />
         </div>
       </div>
@@ -85,21 +87,21 @@ onMounted(loadClients);
     <UCard>
       <template #header>
         <div class="flex items-center justify-between">
-          <h3 class="font-medium text-highlighted">Client database</h3>
+          <h3 class="font-medium text-highlighted">{{ t("Client database") }}</h3>
           <UBadge color="neutral" variant="soft">{{ clients.length }}</UBadge>
         </div>
       </template>
 
-      <div v-if="isLoading" class="py-10 text-center text-sm text-muted">Loading clients...</div>
+      <div v-if="isLoading" class="py-10 text-center text-sm text-muted">{{ t("Loading clients...") }}</div>
       <div v-else class="overflow-x-auto">
         <table class="min-w-full divide-y divide-default text-sm">
           <thead>
             <tr class="text-left text-muted">
-              <th class="py-3 pr-4 font-medium">Company</th>
-              <th class="py-3 pr-4 font-medium">Tax IDs</th>
-              <th class="py-3 pr-4 font-medium">Latest offer</th>
-              <th class="py-3 pr-4 font-medium">Latest contract</th>
-              <th class="py-3 text-right font-medium">Actions</th>
+              <th class="py-3 pr-4 font-medium">{{ t("Company") }}</th>
+              <th class="py-3 pr-4 font-medium">{{ t("Tax IDs") }}</th>
+              <th class="py-3 pr-4 font-medium">{{ t("Latest offer") }}</th>
+              <th class="py-3 pr-4 font-medium">{{ t("Latest contract") }}</th>
+              <th class="py-3 text-right font-medium">{{ t("Actions") }}</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-default">
@@ -115,27 +117,27 @@ onMounted(loadClients);
               <td class="py-3 pr-4">
                 <template v-if="client.offers[0]">
                   <p class="font-medium text-highlighted">
-                    {{ client.offers[0].offerNumber ?? client.offers[0].title ?? "Offer" }}
+                    {{ client.offers[0].offerNumber ?? client.offers[0].title ?? t("Offer") }}
                   </p>
-                  <p class="text-muted">valid {{ client.offers[0].validUntil?.slice(0, 10) ?? "-" }}</p>
+                  <p class="text-muted">{{ t("valid") }} {{ client.offers[0].validUntil?.slice(0, 10) ?? "-" }}</p>
                 </template>
-                <span v-else class="text-muted">No offers</span>
+                <span v-else class="text-muted">{{ t("No offers") }}</span>
               </td>
               <td class="py-3 pr-4">
                 <template v-if="client.offers[0]?.contracts[0]">
                   <p class="font-medium text-highlighted">
-                    {{ client.offers[0].contracts[0].contractNumber ?? "Draft" }}
+                    {{ client.offers[0].contracts[0].contractNumber ?? t("Draft") }}
                   </p>
                   <p class="text-muted">{{ client.offers[0].contracts[0].contractType }}</p>
                 </template>
-                <span v-else class="text-muted">No contracts</span>
+                <span v-else class="text-muted">{{ t("No contracts") }}</span>
               </td>
               <td class="py-3 text-right">
-                <UButton :to="`/clients/${client.id}`" size="xs" icon="i-lucide-arrow-right" label="Open" />
+                <UButton :to="`/clients/${client.id}`" size="xs" icon="i-lucide-arrow-right" :label="t('Open')" />
               </td>
             </tr>
             <tr v-if="!clients.length">
-              <td colspan="5" class="py-10 text-center text-muted">No clients found</td>
+              <td colspan="5" class="py-10 text-center text-muted">{{ t("No clients found") }}</td>
             </tr>
           </tbody>
         </table>

@@ -16,6 +16,7 @@ import {
   setFieldError,
   type FieldErrors,
 } from "../utils/formErrors";
+import { useI18n } from "../i18n";
 
 const route = useRoute();
 const router = useRouter();
@@ -23,6 +24,7 @@ const clientId = computed(() => Number(route.params.id));
 const isEdit = computed(() => route.name === "client-edit");
 const isSaving = ref(false);
 const toast = useAppToast();
+const { t } = useI18n();
 const fieldErrors = ref<FieldErrors>({});
 
 const emptyPerson = (): AuthorizedPerson => ({
@@ -98,31 +100,31 @@ const validateForm = () => {
   const email = form.value.email?.trim();
 
   if (form.value.name.trim().length < 2) {
-    errors = setFieldError(errors, "name", "Name must contain at least 2 characters");
+    errors = setFieldError(errors, "name", t("Name must contain at least 2 characters"));
   }
 
   if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    errors = setFieldError(errors, "email", "Invalid email address");
+    errors = setFieldError(errors, "email", t("Invalid email address"));
   }
 
   if (!form.value.address.street.trim()) {
-    errors = setFieldError(errors, "address.street", "Street is required");
+    errors = setFieldError(errors, "address.street", t("Street is required"));
   }
 
   if (!form.value.address.houseNumber.trim()) {
-    errors = setFieldError(errors, "address.houseNumber", "House no. is required");
+    errors = setFieldError(errors, "address.houseNumber", t("House no. is required"));
   }
 
   if (!form.value.address.postalCode.trim()) {
-    errors = setFieldError(errors, "address.postalCode", "Postal code is required");
+    errors = setFieldError(errors, "address.postalCode", t("Postal code is required"));
   }
 
   if (!form.value.address.city.trim()) {
-    errors = setFieldError(errors, "address.city", "City is required");
+    errors = setFieldError(errors, "address.city", t("City is required"));
   }
 
   if (!form.value.address.country.trim()) {
-    errors = setFieldError(errors, "address.country", "Country is required");
+    errors = setFieldError(errors, "address.country", t("Country is required"));
   }
 
   form.value.authorizedPersons.forEach((person, index) => {
@@ -130,7 +132,7 @@ const validateForm = () => {
     const lastName = person.lastName?.trim() ?? "";
 
     if ((firstName || lastName) && [firstName, lastName].join(" ").trim().length < 2) {
-      errors = setFieldError(errors, `authorizedPersons.${index}.firstName`, "Name or last name is required");
+      errors = setFieldError(errors, `authorizedPersons.${index}.firstName`, t("Name or last name is required"));
     }
   });
 
@@ -201,43 +203,43 @@ onMounted(loadClient);
   <AppLayout>
     <div class="mb-6">
       <h2 class="text-2xl font-semibold text-highlighted">
-        {{ isEdit ? "Edit client" : "New client" }}
+        {{ isEdit ? t("Edit client") : t("New client") }}
       </h2>
-      <p class="mt-1 text-sm text-muted">Company master data, identifiers, status and contacts.</p>
+      <p class="mt-1 text-sm text-muted">{{ t("Company master data, identifiers, status and contacts.") }}</p>
     </div>
 
     <form class="space-y-5" novalidate @submit.prevent="save">
       <UCard>
-        <template #header><h3 class="font-medium text-highlighted">Company</h3></template>
+        <template #header><h3 class="font-medium text-highlighted">{{ t("Company") }}</h3></template>
         <div class="grid gap-4 md:grid-cols-2">
-          <UFormField label="Name" :error="fieldError('name')"><UInput v-model="form.name" class="w-full" /></UFormField>
-          <UFormField label="Legal form"><UInput v-model="form.legalForm" class="w-full" /></UFormField>
+          <UFormField :label="t('Name')" :error="fieldError('name')"><UInput v-model="form.name" class="w-full" /></UFormField>
+          <UFormField :label="t('Legal form')"><UInput v-model="form.legalForm" class="w-full" /></UFormField>
           <UFormField label="NIP"><UInput v-model="form.nip" class="w-full" /></UFormField>
           <UFormField label="REGON"><UInput v-model="form.regon" class="w-full" /></UFormField>
           <UFormField label="KRS"><UInput v-model="form.krs" class="w-full" /></UFormField>
           <UFormField label="EORI"><UInput v-model="form.eori" class="w-full" /></UFormField>
-          <UFormField label="Email" :error="fieldError('email')"><UInput v-model="form.email" type="email" class="w-full" /></UFormField>
-          <UFormField label="Bank account"><UInput v-model="form.bankAccount" class="w-full" /></UFormField>
+          <UFormField :label="t('Email')" :error="fieldError('email')"><UInput v-model="form.email" type="email" class="w-full" /></UFormField>
+          <UFormField :label="t('Bank account')"><UInput v-model="form.bankAccount" class="w-full" /></UFormField>
         </div>
       </UCard>
 
       <UCard>
-        <template #header><h3 class="font-medium text-highlighted">Address</h3></template>
+        <template #header><h3 class="font-medium text-highlighted">{{ t("Address") }}</h3></template>
         <div class="grid gap-4 md:grid-cols-3">
-          <UFormField label="Street" :error="fieldError('address.street')"><UInput v-model="form.address.street" class="w-full" /></UFormField>
-          <UFormField label="House no." :error="fieldError('address.houseNumber')"><UInput v-model="form.address.houseNumber" class="w-full" /></UFormField>
-          <UFormField label="Apartment"><UInput v-model="form.address.apartmentNumber" class="w-full" /></UFormField>
-          <UFormField label="Postal code" :error="fieldError('address.postalCode')"><UInput v-model="form.address.postalCode" class="w-full" /></UFormField>
-          <UFormField label="City" :error="fieldError('address.city')"><UInput v-model="form.address.city" class="w-full" /></UFormField>
-          <UFormField label="Country" :error="fieldError('address.country')"><UInput v-model="form.address.country" class="w-full" /></UFormField>
+          <UFormField :label="t('Street')" :error="fieldError('address.street')"><UInput v-model="form.address.street" class="w-full" /></UFormField>
+          <UFormField :label="t('House no.')" :error="fieldError('address.houseNumber')"><UInput v-model="form.address.houseNumber" class="w-full" /></UFormField>
+          <UFormField :label="t('Apartment')"><UInput v-model="form.address.apartmentNumber" class="w-full" /></UFormField>
+          <UFormField :label="t('Postal code')" :error="fieldError('address.postalCode')"><UInput v-model="form.address.postalCode" class="w-full" /></UFormField>
+          <UFormField :label="t('City')" :error="fieldError('address.city')"><UInput v-model="form.address.city" class="w-full" /></UFormField>
+          <UFormField :label="t('Country')" :error="fieldError('address.country')"><UInput v-model="form.address.country" class="w-full" /></UFormField>
         </div>
       </UCard>
 
       <UCard>
         <template #header>
           <div class="flex items-center justify-between">
-            <h3 class="font-medium text-highlighted">Authorized persons</h3>
-            <UButton size="xs" icon="i-lucide-plus" label="Add" @click="form.authorizedPersons.push(emptyPerson())" />
+            <h3 class="font-medium text-highlighted">{{ t("Authorized persons") }}</h3>
+            <UButton size="xs" icon="i-lucide-plus" :label="t('Add')" @click="form.authorizedPersons.push(emptyPerson())" />
           </div>
         </template>
         <div class="space-y-3">
@@ -251,12 +253,12 @@ onMounted(loadClient);
               <option value="TSL">TSL</option>
             </select>
             <UFormField :error="fieldError(`authorizedPersons.${index}.firstName`)">
-              <UInput v-model="person.firstName" placeholder="Name" class="w-full" />
+              <UInput v-model="person.firstName" :placeholder="t('Name')" class="w-full" />
             </UFormField>
             <UFormField :error="fieldError(`authorizedPersons.${index}.lastName`)">
-              <UInput v-model="person.lastName" placeholder="Last name" class="w-full" />
+              <UInput v-model="person.lastName" :placeholder="t('Last name')" class="w-full" />
             </UFormField>
-            <UInput v-model="person.position" placeholder="Position" />
+            <UInput v-model="person.position" :placeholder="t('Position')" />
             <UButton
               icon="i-lucide-trash-2"
               color="error"
@@ -269,24 +271,24 @@ onMounted(loadClient);
       </UCard>
 
       <UCard>
-        <template #header><h3 class="font-medium text-highlighted">Statuses and references</h3></template>
+        <template #header><h3 class="font-medium text-highlighted">{{ t("Statuses and references") }}</h3></template>
         <div class="grid gap-4 md:grid-cols-3">
-          <UFormField label="Forwarding order signed">
+          <UFormField :label="t('Forwarding order signed')">
             <select v-model="form.forwardingOrderSigned" class="h-9 w-full rounded-md border border-default bg-default px-3 text-sm">
-              <option v-for="item in statusOptions" :key="item.label" :value="item.value || null">{{ item.label }}</option>
+              <option v-for="item in statusOptions" :key="item.label" :value="item.value || null">{{ t(item.label) }}</option>
             </select>
           </UFormField>
-          <UFormField label="Order valid until"><UInput v-model="form.forwardingOrderValidUntil" type="date" class="w-full" /></UFormField>
-          <UFormField label="Marketing no."><UInput v-model="form.marketingReference!.internalNumber" class="w-full" /></UFormField>
-          <UFormField label="Comarch client no."><UInput v-model="form.comarchReference!.clientNumber" class="w-full" /></UFormField>
-          <UFormField label="Comarch ZS no."><UInput v-model="form.comarchReference!.zsNumber" class="w-full" /></UFormField>
-          <UFormField label="ZS valid until"><UInput v-model="form.comarchReference!.zsValidUntil" type="date" class="w-full" /></UFormField>
+          <UFormField :label="t('Order valid until')"><UInput v-model="form.forwardingOrderValidUntil" type="date" class="w-full" /></UFormField>
+          <UFormField :label="t('Marketing no.')"><UInput v-model="form.marketingReference!.internalNumber" class="w-full" /></UFormField>
+          <UFormField :label="t('Comarch client no.')"><UInput v-model="form.comarchReference!.clientNumber" class="w-full" /></UFormField>
+          <UFormField :label="t('Comarch ZS no.')"><UInput v-model="form.comarchReference!.zsNumber" class="w-full" /></UFormField>
+          <UFormField :label="t('ZS valid until')"><UInput v-model="form.comarchReference!.zsValidUntil" type="date" class="w-full" /></UFormField>
         </div>
       </UCard>
 
       <div class="flex justify-end gap-3">
-        <UButton to="/clients" color="neutral" variant="outline" label="Cancel" />
-        <UButton type="submit" icon="i-lucide-save" label="Save client" :loading="isSaving" />
+        <UButton to="/clients" color="neutral" variant="outline" :label="t('Cancel')" />
+        <UButton type="submit" icon="i-lucide-save" :label="t('Save client')" :loading="isSaving" />
       </div>
     </form>
   </AppLayout>

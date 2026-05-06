@@ -7,10 +7,12 @@ import { fetchOffer } from "../api/offers.api";
 import AppLayout from "../components/layout/AppLayout.vue";
 import { useAppToast } from "../composables/useAppToast";
 import { fieldErrorsFromApiError, type FieldErrors } from "../utils/formErrors";
+import { useI18n } from "../i18n";
 
 const route = useRoute();
 const router = useRouter();
 const toast = useAppToast();
+const { t } = useI18n();
 const offerId = Number(route.params.offerId);
 const clientId = ref<number | null>(null);
 const isSaving = ref(false);
@@ -51,7 +53,7 @@ const save = async () => {
       validUntil: form.value.validUntil || null,
     });
     const confirmed = await confirmContract(draft.contract.id);
-    toast.success(`Contract ${confirmed.contract.contractNumber ?? ""} created`);
+    toast.success(t("Contract {number} created", { number: confirmed.contract.contractNumber ?? "" }));
     await router.push(clientId.value ? `/clients/${clientId.value}` : "/clients");
   } catch (error) {
     fieldErrors.value = fieldErrorsFromApiError(error);
@@ -71,13 +73,13 @@ fetchOffer(offerId)
 <template>
   <AppLayout>
     <div class="mb-6">
-      <h2 class="text-2xl font-semibold text-highlighted">New contract</h2>
-      <p class="mt-1 text-sm text-muted">Select contract type, language variant and dates.</p>
+      <h2 class="text-2xl font-semibold text-highlighted">{{ t("New contract") }}</h2>
+      <p class="mt-1 text-sm text-muted">{{ t("Select contract type, language variant and dates.") }}</p>
     </div>
 
     <form class="max-w-3xl space-y-5" novalidate @submit.prevent="save">
       <UCard>
-        <template #header><h3 class="font-medium text-highlighted">Contract type</h3></template>
+        <template #header><h3 class="font-medium text-highlighted">{{ t("Contract type") }}</h3></template>
         <div class="grid gap-3 md:grid-cols-2">
           <label
             v-for="item in contractTypes"
@@ -85,13 +87,13 @@ fetchOffer(offerId)
             class="flex cursor-pointer items-center gap-3 rounded-md border border-default p-3"
           >
             <input v-model="form.contractType" type="radio" :value="item.value" />
-            <span class="font-medium text-highlighted">{{ item.label }}</span>
+            <span class="font-medium text-highlighted">{{ t(item.label) }}</span>
           </label>
         </div>
       </UCard>
 
       <UCard>
-        <template #header><h3 class="font-medium text-highlighted">Language</h3></template>
+        <template #header><h3 class="font-medium text-highlighted">{{ t("Language") }}</h3></template>
         <div class="grid gap-3 md:grid-cols-2">
           <label
             v-for="item in languages"
@@ -99,26 +101,26 @@ fetchOffer(offerId)
             class="flex cursor-pointer items-center gap-3 rounded-md border border-default p-3"
           >
             <input v-model="form.languageVariant" type="radio" :value="item.value" />
-            <span class="font-medium text-highlighted">{{ item.label }}</span>
+            <span class="font-medium text-highlighted">{{ t(item.label) }}</span>
           </label>
         </div>
       </UCard>
 
       <UCard>
-        <template #header><h3 class="font-medium text-highlighted">Dates</h3></template>
+        <template #header><h3 class="font-medium text-highlighted">{{ t("Dates") }}</h3></template>
         <div class="grid gap-4 md:grid-cols-2">
-          <UFormField label="Signed at" :error="fieldError('signedAt')">
+          <UFormField :label="t('Signed at')" :error="fieldError('signedAt')">
             <UInput v-model="form.signedAt" type="date" class="w-full" />
           </UFormField>
-          <UFormField label="Valid until" :error="fieldError('validUntil')">
+          <UFormField :label="t('Valid until')" :error="fieldError('validUntil')">
             <UInput v-model="form.validUntil" type="date" class="w-full" />
           </UFormField>
         </div>
       </UCard>
 
       <div class="flex justify-end gap-3">
-        <UButton :to="clientId ? `/clients/${clientId}` : '/clients'" color="neutral" variant="outline" label="Cancel" />
-        <UButton type="submit" icon="i-lucide-file-check-2" label="Create contract" :loading="isSaving" />
+        <UButton :to="clientId ? `/clients/${clientId}` : '/clients'" color="neutral" variant="outline" :label="t('Cancel')" />
+        <UButton type="submit" icon="i-lucide-file-check-2" :label="t('Create contract')" :loading="isSaving" />
       </div>
     </form>
   </AppLayout>

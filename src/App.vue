@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted } from "vue";
 import { useRequiredUpdate } from "./composables/useRequiredUpdate";
+import { useI18n } from "./i18n";
 
 const {
   currentVersion,
@@ -12,6 +13,7 @@ const {
   checkForRequiredUpdate,
   installRequiredUpdate,
 } = useRequiredUpdate();
+const { t } = useI18n();
 
 onMounted(() => {
   void checkForRequiredUpdate();
@@ -24,11 +26,15 @@ onMounted(() => {
 
     <div v-if="isRequired" class="update-lock" role="alertdialog" aria-modal="true">
       <div class="update-lock__panel">
-        <p class="update-lock__eyebrow">Update required</p>
-        <h1>New version is available</h1>
+        <p class="update-lock__eyebrow">{{ t("Update required") }}</p>
+        <h1>{{ t("New version is available") }}</h1>
         <p class="update-lock__copy">
-          This build is outdated. Current version {{ currentVersion || "unknown" }},
-          latest version {{ latestVersion || "available" }}. Install the update to continue.
+          {{
+            t("This build is outdated. Current version {current}, latest version {latest}. Install the update to continue.", {
+              current: currentVersion || t("unknown"),
+              latest: latestVersion || t("available"),
+            })
+          }}
         </p>
 
         <p v-if="progressText" class="update-lock__progress">{{ progressText }}</p>
@@ -42,7 +48,7 @@ onMounted(() => {
           :disabled="isInstalling"
           @click="installRequiredUpdate"
         >
-          Update
+          {{ t("Update") }}
         </UButton>
       </div>
     </div>

@@ -9,10 +9,12 @@ import {
   setFieldError,
   type FieldErrors,
 } from "../utils/formErrors";
+import { useI18n } from "../i18n";
 
 const roles: UserRole[] = ["ADMIN", "MANAGER", "USER", "READONLY"];
 
 const toast = useAppToast();
+const { t } = useI18n();
 const users = ref<User[]>([]);
 const isLoading = ref(false);
 const fieldErrors = ref<FieldErrors>({});
@@ -29,15 +31,15 @@ const validateForm = () => {
   let errors: FieldErrors = {};
 
   if (form.value.fullName.trim().length < 2) {
-    errors = setFieldError(errors, "fullName", "Full name must contain at least 2 characters");
+    errors = setFieldError(errors, "fullName", t("Full name must contain at least 2 characters"));
   }
 
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.value.email.trim())) {
-    errors = setFieldError(errors, "email", "Invalid email address");
+    errors = setFieldError(errors, "email", t("Invalid email address"));
   }
 
   if (form.value.password.length < 8) {
-    errors = setFieldError(errors, "password", "Password must contain at least 8 characters");
+    errors = setFieldError(errors, "password", t("Password must contain at least 8 characters"));
   }
 
   fieldErrors.value = errors;
@@ -97,30 +99,30 @@ onMounted(loadUsers);
   <AppLayout>
     <div class="mb-6 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
       <div>
-        <h2 class="text-2xl font-semibold text-highlighted">Users</h2>
-        <p class="mt-1 text-sm text-muted">Create employee accounts and manage access.</p>
+        <h2 class="text-2xl font-semibold text-highlighted">{{ t("Users") }}</h2>
+        <p class="mt-1 text-sm text-muted">{{ t("Create employee accounts and manage access.") }}</p>
       </div>
 
-      <UButton icon="i-lucide-refresh-cw" label="Refresh" variant="outline" @click="loadUsers" />
+      <UButton icon="i-lucide-refresh-cw" :label="t('Refresh')" variant="outline" @click="loadUsers" />
     </div>
 
     <div class="grid min-w-0 gap-5 xl:grid-cols-[380px_minmax(0,1fr)]">
       <UCard>
         <template #header>
-          <h3 class="font-medium text-highlighted">New user</h3>
+          <h3 class="font-medium text-highlighted">{{ t("New user") }}</h3>
         </template>
 
         <form class="space-y-4" novalidate @submit.prevent="createUser">
-          <UFormField label="Full name" :error="fieldError('fullName')">
+          <UFormField :label="t('Full name')" :error="fieldError('fullName')">
             <UInput v-model="form.fullName" class="w-full" />
           </UFormField>
-          <UFormField label="Email" :error="fieldError('email')">
+          <UFormField :label="t('Email')" :error="fieldError('email')">
             <UInput v-model="form.email" type="email" class="w-full" />
           </UFormField>
-          <UFormField label="Password" :error="fieldError('password')">
+          <UFormField :label="t('Password')" :error="fieldError('password')">
             <UInput v-model="form.password" type="password" class="w-full" />
           </UFormField>
-          <UFormField label="Role">
+          <UFormField :label="t('Role')">
             <select
               v-model="form.role"
               class="h-9 w-full rounded-md border border-default bg-default px-3 text-sm text-highlighted outline-none focus:border-primary"
@@ -129,28 +131,28 @@ onMounted(loadUsers);
             </select>
           </UFormField>
 
-          <UButton type="submit" icon="i-lucide-user-plus" label="Create user" block />
+          <UButton type="submit" icon="i-lucide-user-plus" :label="t('Create user')" block />
         </form>
       </UCard>
 
       <UCard class="min-w-0">
         <template #header>
           <div class="flex items-center justify-between">
-            <h3 class="font-medium text-highlighted">Employee accounts</h3>
+            <h3 class="font-medium text-highlighted">{{ t("Employee accounts") }}</h3>
             <UBadge color="neutral" variant="soft">{{ users.length }}</UBadge>
           </div>
         </template>
 
-        <div v-if="isLoading" class="py-10 text-center text-sm text-muted">Loading users...</div>
+        <div v-if="isLoading" class="py-10 text-center text-sm text-muted">{{ t("Loading users...") }}</div>
         <div v-else class="overflow-x-auto">
           <table class="min-w-full divide-y divide-default text-sm">
             <thead>
               <tr class="text-left text-muted">
-                <th class="py-3 pr-4 font-medium">Name</th>
-                <th class="py-3 pr-4 font-medium">Email</th>
-                <th class="py-3 pr-4 font-medium">Role</th>
-                <th class="py-3 pr-4 font-medium">Status</th>
-                <th class="py-3 text-right font-medium">Actions</th>
+                <th class="py-3 pr-4 font-medium">{{ t("Name") }}</th>
+                <th class="py-3 pr-4 font-medium">{{ t("Email") }}</th>
+                <th class="py-3 pr-4 font-medium">{{ t("Role") }}</th>
+                <th class="py-3 pr-4 font-medium">{{ t("Status") }}</th>
+                <th class="py-3 text-right font-medium">{{ t("Actions") }}</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-default">
@@ -162,7 +164,7 @@ onMounted(loadUsers);
                 </td>
                 <td class="py-3 pr-4">
                   <UBadge :color="user.isActive ? 'success' : 'neutral'" variant="soft">
-                    {{ user.isActive ? "Active" : "Inactive" }}
+                    {{ user.isActive ? t("Active") : t("Inactive") }}
                   </UBadge>
                 </td>
                 <td class="py-3 text-right">
@@ -172,7 +174,7 @@ onMounted(loadUsers);
                     color="error"
                     variant="soft"
                     icon="i-lucide-user-x"
-                    label="Deactivate"
+                    :label="t('Deactivate')"
                     @click="deactivateUser(user.id)"
                   />
                 </td>

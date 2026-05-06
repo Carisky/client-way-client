@@ -20,7 +20,7 @@ function parseEnvValue(value) {
     (trimmed.startsWith('"') && trimmed.endsWith('"')) ||
     (trimmed.startsWith("'") && trimmed.endsWith("'"))
   ) {
-    return trimmed.slice(1, -1).replaceAll("\\n", "\n");
+    return trimmed.slice(1, -1).split("\\n").join("\n");
   }
 
   return trimmed;

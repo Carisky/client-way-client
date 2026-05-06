@@ -13,6 +13,7 @@ import {
 import AppLayout from "../components/layout/AppLayout.vue";
 import { useAppToast } from "../composables/useAppToast";
 import { fieldErrorsFromApiError, setFieldError, type FieldErrors } from "../utils/formErrors";
+import { useI18n } from "../i18n";
 
 const contractTypes: ContractType[] = ["STANDARD", "IMPORT_33A", "CBAM", "SENT"];
 const translationLanguages: Array<Exclude<TemplateLanguage, "PL">> = ["EN", "UA", "RU"];
@@ -21,6 +22,7 @@ const templates = ref<DocumentTemplate[]>([]);
 const selectedContractType = ref<ContractType | "">("");
 const activeOnly = ref(true);
 const toast = useAppToast();
+const { t } = useI18n();
 const fieldErrors = ref<FieldErrors>({});
 const isLoading = ref(false);
 const isUploading = ref(false);
@@ -74,7 +76,7 @@ const submitTemplate = async () => {
   fieldErrors.value = {};
 
   if (!form.value.file) {
-    fieldErrors.value = setFieldError({}, "file", "Template DOCX file is required");
+    fieldErrors.value = setFieldError({}, "file", t("Template DOCX file is required"));
     toast.error(new Error("Fix highlighted fields"));
     return;
   }
@@ -121,7 +123,7 @@ const submitTranslation = async (
   try {
     await uploadTemplateTranslation(templateId, language, file);
     input.value = "";
-    toast.success(`${language} translation attached`);
+    toast.success(t("{language} translation attached", { language }));
     await loadTemplates();
   } catch (error) {
     toast.error(error, "Failed to attach translation");
@@ -134,65 +136,65 @@ onMounted(loadTemplates);
 <template>
   <AppLayout>
     <div class="mb-6">
-      <h2 class="text-2xl font-semibold text-highlighted">Templates</h2>
-      <p class="mt-1 text-sm text-muted">Import DOCX templates and parse database placeholders.</p>
+      <h2 class="text-2xl font-semibold text-highlighted">{{ t("Templates") }}</h2>
+      <p class="mt-1 text-sm text-muted">{{ t("Import DOCX templates and parse database placeholders.") }}</p>
     </div>
 
     <div class="grid min-w-0 gap-5 xl:grid-cols-[380px_minmax(0,1fr)]">
       <UCard>
-        <template #header><h3 class="font-medium text-highlighted">Import template</h3></template>
+        <template #header><h3 class="font-medium text-highlighted">{{ t("Import template") }}</h3></template>
         <form class="space-y-4" novalidate @submit.prevent="submitTemplate">
-          <UFormField label="Name" :error="fieldError('name')">
+          <UFormField :label="t('Name')" :error="fieldError('name')">
             <UInput v-model="form.name" class="w-full" />
           </UFormField>
-          <UFormField label="Code">
-            <UInput v-model="form.code" placeholder="auto from filename" class="w-full" />
+          <UFormField :label="t('Code')">
+            <UInput v-model="form.code" :placeholder="t('auto from filename')" class="w-full" />
           </UFormField>
-          <UFormField label="Contract type">
+          <UFormField :label="t('Contract type')">
             <select v-model="form.contractType" class="h-9 w-full rounded-md border border-default bg-default px-3 text-sm">
               <option v-for="type in contractTypes" :key="type" :value="type">{{ type }}</option>
             </select>
           </UFormField>
-          <UFormField label="Base language">
+          <UFormField :label="t('Base language')">
             <select v-model="form.baseLanguage" class="h-9 w-full rounded-md border border-default bg-default px-3 text-sm">
               <option value="PL">PL</option>
             </select>
           </UFormField>
-          <UFormField label="DOCX file" :error="fieldError('file')">
+          <UFormField :label="t('DOCX file')" :error="fieldError('file')">
             <input type="file" accept=".docx" class="w-full text-sm" @change="onTemplateFile" />
           </UFormField>
-          <UButton type="submit" icon="i-lucide-upload" label="Import" block :loading="isUploading" />
+          <UButton type="submit" icon="i-lucide-upload" :label="t('Import')" block :loading="isUploading" />
         </form>
       </UCard>
 
       <UCard>
         <template #header>
           <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <h3 class="font-medium text-highlighted">Generation list</h3>
+            <h3 class="font-medium text-highlighted">{{ t("Generation list") }}</h3>
             <div class="flex items-center gap-2">
-              <UCheckbox v-model="activeOnly" label="Active only" @change="loadTemplates" />
+              <UCheckbox v-model="activeOnly" :label="t('Active only')" @change="loadTemplates" />
               <select v-model="selectedContractType" class="h-9 rounded-md border border-default bg-default px-3 text-sm">
-                <option value="">All</option>
+                <option value="">{{ t("All") }}</option>
                 <option v-for="type in contractTypes" :key="type" :value="type">{{ type }}</option>
               </select>
-              <UButton icon="i-lucide-refresh-cw" label="Refresh" variant="outline" @click="loadTemplates" />
+              <UButton icon="i-lucide-refresh-cw" :label="t('Refresh')" variant="outline" @click="loadTemplates" />
             </div>
           </div>
         </template>
 
-        <div v-if="isLoading" class="py-10 text-center text-sm text-muted">Loading templates...</div>
+        <div v-if="isLoading" class="py-10 text-center text-sm text-muted">{{ t("Loading templates...") }}</div>
         <div v-else class="space-y-4">
           <div v-for="template in templates" :key="template.id" class="rounded-md border border-default p-4">
             <div class="mb-4 flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
               <div>
                 <p class="font-medium text-highlighted">{{ template.fileName }}</p>
                 <p class="text-sm text-muted">
-                  {{ template.name }} · {{ template.contractType }} · {{ template.code }}
+                  {{ template.name }} &middot; {{ template.contractType }} &middot; {{ template.code }}
                 </p>
               </div>
               <div class="flex items-center gap-2">
                 <UBadge :color="template.isActive ? 'success' : 'neutral'" variant="soft">
-                  {{ template.isActive ? "Active" : "Archived" }}
+                  {{ template.isActive ? t("Active") : t("Archived") }}
                 </UBadge>
                 <UBadge color="neutral" variant="soft">{{ template.baseLanguage }}</UBadge>
                 <UButton
@@ -201,7 +203,7 @@ onMounted(loadTemplates);
                   color="error"
                   variant="soft"
                   icon="i-lucide-archive"
-                  label="Archive"
+                  :label="t('Archive')"
                   @click="archive(template.id)"
                 />
                 <UButton
@@ -210,7 +212,7 @@ onMounted(loadTemplates);
                   color="primary"
                   variant="soft"
                   icon="i-lucide-rotate-ccw"
-                  label="Restore"
+                  :label="t('Restore')"
                   @click="restore(template.id)"
                 />
               </div>
@@ -218,16 +220,16 @@ onMounted(loadTemplates);
 
             <div class="mb-4 grid gap-3 md:grid-cols-2">
               <div>
-                <p class="mb-2 text-sm font-medium text-highlighted">Parsed placeholders</p>
+                <p class="mb-2 text-sm font-medium text-highlighted">{{ t("Parsed placeholders") }}</p>
                 <div class="flex flex-wrap gap-1">
                   <UBadge v-for="path in template.placeholders" :key="path" color="success" variant="soft">
                     {{ path }}
                   </UBadge>
-                  <span v-if="!template.placeholders.length" class="text-sm text-muted">None</span>
+                  <span v-if="!template.placeholders.length" class="text-sm text-muted">{{ t("None") }}</span>
                 </div>
               </div>
               <div>
-                <p class="mb-2 text-sm font-medium text-highlighted">Unsupported</p>
+                <p class="mb-2 text-sm font-medium text-highlighted">{{ t("Unsupported") }}</p>
                 <div class="flex flex-wrap gap-1">
                   <UBadge
                     v-for="path in template.unsupportedPlaceholders"
@@ -237,14 +239,14 @@ onMounted(loadTemplates);
                   >
                     {{ path }}
                   </UBadge>
-                  <span v-if="!template.unsupportedPlaceholders.length" class="text-sm text-muted">None</span>
+                  <span v-if="!template.unsupportedPlaceholders.length" class="text-sm text-muted">{{ t("None") }}</span>
                 </div>
               </div>
             </div>
 
             <div class="grid gap-3 md:grid-cols-3">
               <div v-for="language in translationLanguages" :key="language">
-                <p class="mb-1 text-xs font-medium text-muted">{{ language }} translation</p>
+                <p class="mb-1 text-xs font-medium text-muted">{{ language }} {{ t("translation") }}</p>
                 <input
                   type="file"
                   accept=".docx"
@@ -254,13 +256,13 @@ onMounted(loadTemplates);
                 <p class="mt-1 text-xs text-muted">
                   {{
                     template.translations.find((translation) => translation.language === language)?.fileName ??
-                    "Not attached"
+                    t("Not attached")
                   }}
                 </p>
               </div>
             </div>
           </div>
-          <p v-if="!templates.length" class="py-10 text-center text-sm text-muted">No templates imported.</p>
+          <p v-if="!templates.length" class="py-10 text-center text-sm text-muted">{{ t("No templates imported.") }}</p>
         </div>
       </UCard>
     </div>

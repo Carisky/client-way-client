@@ -1,7 +1,11 @@
 <script setup lang="ts">
+import { useI18n } from "../../i18n";
+
 defineProps<{
   status: string | null | undefined;
 }>();
+
+const { t } = useI18n();
 </script>
 
 <template>
@@ -9,6 +13,6 @@ defineProps<{
     :color="status === 'SIGNED' || status === 'YES' ? 'success' : status === 'DRAFT' ? 'neutral' : 'primary'"
     variant="soft"
   >
-    {{ status ?? "Missing" }}
+    {{ status ? t(status) : t("Missing") }}
   </UBadge>
 </template>
