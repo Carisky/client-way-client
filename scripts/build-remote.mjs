@@ -1,10 +1,11 @@
 import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
-import { basename, dirname, join, resolve } from "node:path";
+import { basename, delimiter, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const clientRoot = resolve(scriptDir, "..");
+const tauriCliPath = join(clientRoot, "node_modules", "@tauri-apps", "cli", "tauri.js");
 const tauriConfigPath = join(clientRoot, "src-tauri", "tauri.conf.json");
 const cargoPath = join(clientRoot, "src-tauri", "Cargo.toml");
 const packagePath = join(clientRoot, "package.json");
@@ -15,6 +16,9 @@ function exec(commandName, args, options = {}) {
   const file = process.platform === "win32" && commandName === "npm" ? "cmd.exe" : commandName;
   const commandArgs =
     process.platform === "win32" && commandName === "npm" ? ["/d", "/c", "npm.cmd", ...args] : args;
+  const pathKey = Object.keys(process.env).find((key) => key.toLowerCase() === "path") ?? "PATH";
+  const nodeBin = dirname(process.execPath);
+  const nodeModulesBin = join(clientRoot, "node_modules", ".bin");
 
   return execFileSync(file, commandArgs, {
     cwd: clientRoot,
@@ -23,6 +27,7 @@ function exec(commandName, args, options = {}) {
     env: {
       ...process.env,
       ...options.env,
+      [pathKey]: [nodeBin, nodeModulesBin, process.env[pathKey] ?? ""].join(delimiter),
     },
   });
 }
@@ -184,7 +189,7 @@ if (!repository) {
 
 syncVersions(version, repository);
 
-exec("npm", ["run", "tauri", "--", "build", "--bundles", "msi"]);
+exec(process.execPath, [tauriCliPath, "build", "--bundles", "msi"]);
 
 const { msiPath, signaturePath } = findBuildArtifacts();
 const latestJsonPath = buildLatestJson(version, repository, msiPath, signaturePath);

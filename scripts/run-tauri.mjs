@@ -1,12 +1,14 @@
 import { execFileSync, spawn } from "node:child_process";
-import { delimiter, join } from "node:path";
+import { delimiter, dirname, join } from "node:path";
 import { homedir } from "node:os";
 
 const cargoBin = join(homedir(), ".cargo", "bin");
+const nodeBin = dirname(process.execPath);
+const nodeModulesBin = join(import.meta.dirname, "..", "node_modules", ".bin");
 const pathKey = Object.keys(process.env).find((key) => key.toLowerCase() === "path") ?? "PATH";
 const env = {
   ...process.env,
-  [pathKey]: `${cargoBin}${delimiter}${process.env[pathKey] ?? ""}`,
+  [pathKey]: [nodeBin, nodeModulesBin, cargoBin, process.env[pathKey] ?? ""].join(delimiter),
 };
 
 const tauriArgs = process.argv.slice(2);
