@@ -10,6 +10,7 @@ const env = {
 };
 
 const tauriArgs = process.argv.slice(2);
+const tauriBin = join(import.meta.dirname, "..", "node_modules", "@tauri-apps", "cli", "tauri.js");
 
 if (process.platform === "win32" && tauriArgs[0] === "dev") {
   try {
@@ -21,11 +22,8 @@ if (process.platform === "win32" && tauriArgs[0] === "dev") {
   }
 }
 
-const command = process.platform === "win32" ? "cmd.exe" : "tauri";
-const args =
-  process.platform === "win32"
-    ? ["/d", "/c", "tauri.cmd", ...tauriArgs]
-    : tauriArgs;
+const command = process.execPath;
+const args = [tauriBin, ...tauriArgs];
 
 const child = spawn(command, args, {
   env,
