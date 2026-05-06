@@ -27,6 +27,35 @@ export type Contract = ContractPayload & {
   generatedDocuments?: GeneratedDocument[];
 };
 
+export type ContractListFilters = {
+  search?: string;
+  contractType?: "" | ContractType;
+  status?: "" | ContractStatus;
+  sortBy?: "createdAt" | "updatedAt" | "contractNumber" | "validUntil" | "signedAt";
+  sortDir?: "asc" | "desc";
+};
+
+const toQuery = (filters: ContractListFilters) => {
+  const params = new URLSearchParams();
+
+  Object.entries(filters).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") {
+      params.set(key, String(value));
+    }
+  });
+
+  const query = params.toString();
+  return query ? `?${query}` : "";
+};
+
+export const fetchContracts = (filters: ContractListFilters = {}) => {
+  return request<{ contracts: Contract[] }>(`/api/contracts${toQuery(filters)}`);
+};
+
+export const fetchContract = (id: number) => {
+  return request<{ contract: Contract }>(`/api/contracts/${id}`);
+};
+
 export const createContractDraft = (offerId: number, payload: ContractPayload) => {
   return request<{ contract: Contract }>(`/api/offers/${offerId}/contracts`, {
     method: "POST",

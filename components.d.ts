@@ -13,6 +13,8 @@ declare module 'vue' {
   export interface GlobalComponents {
     AppLayout: typeof import('./src/components/layout/AppLayout.vue')['default']
     ContractHistoryTable: typeof import('./src/components/contracts/ContractHistoryTable.vue')['default']
+    ExpirationCell: typeof import('./src/components/shared/ExpirationCell.vue')['default']
+    ExpiringItemsTable: typeof import('./src/components/dashboard/ExpiringItemsTable.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
     StatusBadge: typeof import('./src/components/shared/StatusBadge.vue')['default']

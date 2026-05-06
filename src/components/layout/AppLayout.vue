@@ -9,6 +9,7 @@ const router = useRouter();
 const navItems = computed(() => [
   { label: "Dashboard", icon: "i-lucide-layout-dashboard", to: "/" },
   { label: "Clients", icon: "i-lucide-building-2", to: "/clients" },
+  { label: "Contracts", icon: "i-lucide-file-check-2", to: "/contracts" },
   { label: "Templates", icon: "i-lucide-file-text", to: "/templates" },
   ...(auth.can("ADMIN") ? [{ label: "Users", icon: "i-lucide-users", to: "/users" }] : []),
 ]);

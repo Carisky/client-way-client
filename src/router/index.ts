@@ -6,6 +6,8 @@ import UsersView from "../views/UsersView.vue";
 import ClientsListView from "../views/ClientsListView.vue";
 import ClientDetailView from "../views/ClientDetailView.vue";
 import ClientFormView from "../views/ClientFormView.vue";
+import ContractsListView from "../views/ContractsListView.vue";
+import ContractDetailView from "../views/ContractDetailView.vue";
 import ContractWizardView from "../views/ContractWizardView.vue";
 import OfferFormView from "../views/OfferFormView.vue";
 import TemplatesView from "../views/TemplatesView.vue";
@@ -27,6 +29,16 @@ export const router = createRouter({
     {
       path: "/clients",
       component: ClientsListView,
+      meta: { requiresAuth: true },
+    },
+    {
+      path: "/contracts",
+      component: ContractsListView,
+      meta: { requiresAuth: true },
+    },
+    {
+      path: "/contracts/:id",
+      component: ContractDetailView,
       meta: { requiresAuth: true },
     },
     {
