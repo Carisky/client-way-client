@@ -10,6 +10,7 @@ import ContractsListView from "../views/ContractsListView.vue";
 import ContractDetailView from "../views/ContractDetailView.vue";
 import ContractWizardView from "../views/ContractWizardView.vue";
 import OfferFormView from "../views/OfferFormView.vue";
+import OffersListView from "../views/OffersListView.vue";
 import TemplatesView from "../views/TemplatesView.vue";
 
 export const router = createRouter({
@@ -34,6 +35,11 @@ export const router = createRouter({
     {
       path: "/contracts",
       component: ContractsListView,
+      meta: { requiresAuth: true },
+    },
+    {
+      path: "/offers",
+      component: OffersListView,
       meta: { requiresAuth: true },
     },
     {

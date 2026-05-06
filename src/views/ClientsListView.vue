@@ -77,7 +77,7 @@ onMounted(loadClients);
         </UFormField>
         <div class="flex items-center gap-3">
           <UCheckbox v-model="includeArchived" label="Archived" />
-          <UButton icon="i-lucide-filter" label="Apply" variant="outline" @click="loadClients" />
+          <UButton icon="i-lucide-filter" variant="outline" @click="loadClients" />
         </div>
       </div>
     </UCard>
