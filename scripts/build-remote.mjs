@@ -9,8 +9,47 @@ const tauriCliPath = join(clientRoot, "node_modules", "@tauri-apps", "cli", "tau
 const tauriConfigPath = join(clientRoot, "src-tauri", "tauri.conf.json");
 const cargoPath = join(clientRoot, "src-tauri", "Cargo.toml");
 const packagePath = join(clientRoot, "package.json");
+const productionEnvPath = join(clientRoot, ".env.production");
 const updaterDir = join(clientRoot, "dist-updater");
 const bundleDir = join(clientRoot, "src-tauri", "target", "release", "bundle");
+
+function parseEnvValue(value) {
+  const trimmed = value.trim();
+
+  if (
+    (trimmed.startsWith('"') && trimmed.endsWith('"')) ||
+    (trimmed.startsWith("'") && trimmed.endsWith("'"))
+  ) {
+    return trimmed.slice(1, -1).replaceAll("\\n", "\n");
+  }
+
+  return trimmed;
+}
+
+function loadEnvFile(path) {
+  if (!existsSync(path)) {
+    return {};
+  }
+
+  return readFileSync(path, "utf8")
+    .split(/\r?\n/)
+    .reduce((acc, line) => {
+      const trimmed = line.trim();
+
+      if (!trimmed || trimmed.startsWith("#")) {
+        return acc;
+      }
+
+      const match = trimmed.match(/^([A-Za-z_][A-Za-z0-9_]*)=(.*)$/);
+
+      if (!match) {
+        return acc;
+      }
+
+      acc[match[1]] = parseEnvValue(match[2]);
+      return acc;
+    }, {});
+}
 
 function exec(commandName, args, options = {}) {
   const file = process.platform === "win32" && commandName === "npm" ? "cmd.exe" : commandName;
@@ -182,9 +221,14 @@ function publishRelease(version, assets) {
 const packageJson = readJson(packagePath);
 const version = packageJson.version;
 const repository = getRepository();
+const productionEnv = loadEnvFile(productionEnvPath);
 
 if (!repository) {
   throw new Error("Cannot resolve GitHub repository. Set GITHUB_REPOSITORY=owner/repo before running build:remote.");
+}
+
+for (const [key, value] of Object.entries(productionEnv)) {
+  process.env[key] ??= value;
 }
 
 syncVersions(version, repository);
