@@ -7,7 +7,11 @@ import {
   generatedDocumentPreviewUrl,
   generateContractDocuments,
   openGeneratedDocumentLocation,
+  openSignedFileLocation,
   saveGeneratedDocumentToDownloads,
+  saveSignedFileToDownloads,
+  signedFileDownloadUrl,
+  signedFilePreviewUrl,
 } from "../../api/contracts.api";
 import { getAuthToken } from "../../api/http";
 import { useAppToast } from "../../composables/useAppToast";
@@ -27,6 +31,7 @@ const toast = useAppToast();
 const { t } = useI18n();
 const generatingIds = ref(new Set<number>());
 const savingIds = ref(new Set<number>());
+const savingSignedIds = ref(new Set<number>());
 
 const uploadSignedCopy = async (contractId: number, event: Event) => {
   const input = event.target as HTMLInputElement;
@@ -125,6 +130,74 @@ const openGeneratedLocation = async (documentId: number) => {
     toast.error(error, "Failed to open file location");
   }
 };
+
+const canPreviewSignedFile = (mimeType: string | null) => {
+  return !!mimeType && (mimeType === "application/pdf" || mimeType.startsWith("image/"));
+};
+
+const previewSignedFile = async (signedFileId: number) => {
+  const response = await fetch(signedFilePreviewUrl(signedFileId), {
+    headers: getAuthToken() ? { Authorization: `Bearer ${getAuthToken()}` } : {},
+  });
+
+  if (!response.ok) {
+    toast.error(new Error("Preview failed"));
+    return;
+  }
+
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
+  window.open(url, "_blank", "noopener,noreferrer");
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
+};
+
+const downloadSignedFile = async (signedFileId: number, fileName: string) => {
+  savingSignedIds.value = new Set(savingSignedIds.value).add(signedFileId);
+
+  try {
+    const result = await saveSignedFileToDownloads(signedFileId);
+    let locationOpened = false;
+    toast.success("File saved", t("{path}. Click to open location.", { path: result.savedTo }), () => {
+      if (locationOpened) {
+        return;
+      }
+
+      locationOpened = true;
+      void openSignedLocation(signedFileId);
+    });
+  } catch {
+    const response = await fetch(signedFileDownloadUrl(signedFileId), {
+      headers: getAuthToken() ? { Authorization: `Bearer ${getAuthToken()}` } : {},
+    });
+
+    if (!response.ok) {
+      toast.error(new Error("Download failed"));
+      return;
+    }
+
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = fileName;
+    link.click();
+    URL.revokeObjectURL(url);
+    toast.success("Download started", fileName);
+  } finally {
+    const next = new Set(savingSignedIds.value);
+    next.delete(signedFileId);
+    savingSignedIds.value = next;
+  }
+};
+
+const openSignedLocation = async (signedFileId: number) => {
+  try {
+    const result = await openSignedFileLocation(signedFileId);
+    toast.success("Opened file location", result.openedPath);
+  } catch (error) {
+    toast.error(error, "Failed to open file location");
+  }
+};
 </script>
 
 <template>
@@ -208,22 +281,56 @@ const openGeneratedLocation = async (documentId: number) => {
       </div>
 
       <div class="min-w-0">
-        <p class="mb-2 text-right text-xs font-medium text-muted">{{ t("Signed copy") }}</p>
-        <label class="flex justify-end">
-          <input
-            type="file"
-            accept="application/pdf,image/*"
-            class="sr-only"
-            @change="uploadSignedCopy(contract.id, $event)"
-          />
-          <span
-            class="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-md border border-default text-primary hover:bg-muted"
-            :title="t('Attach signed copy')"
-            :aria-label="t('Attach signed copy')"
+        <div class="mb-2 flex items-center justify-end gap-2">
+          <p class="text-xs font-medium text-muted">{{ t("Signed copy") }}</p>
+          <label>
+            <input
+              type="file"
+              accept="application/pdf,image/*"
+              class="sr-only"
+              @change="uploadSignedCopy(contract.id, $event)"
+            />
+            <span
+              class="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-md border border-default text-primary hover:bg-muted"
+              :title="t('Attach signed copy')"
+              :aria-label="t('Attach signed copy')"
+            >
+              <UIcon name="i-lucide-paperclip" class="size-4" />
+            </span>
+          </label>
+        </div>
+        <div v-if="contract.signedFiles?.length" class="flex min-w-0 flex-col gap-1">
+          <div
+            v-for="file in contract.signedFiles"
+            :key="file.id"
+            class="grid min-w-0 grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-1 text-xs"
           >
-            <UIcon name="i-lucide-paperclip" class="size-4" />
-          </span>
-        </label>
+            <span class="truncate text-muted" :title="file.originalName">
+              {{ file.originalName }}
+            </span>
+            <UButton
+              v-if="canPreviewSignedFile(file.mimeType)"
+              size="xs"
+              variant="ghost"
+              icon="i-lucide-eye"
+              :title="t('Preview')"
+              :aria-label="t('Preview')"
+              square
+              @click="previewSignedFile(file.id)"
+            />
+            <UButton
+              size="xs"
+              variant="ghost"
+              icon="i-lucide-download"
+              :title="t('Save')"
+              :aria-label="t('Save')"
+              square
+              :loading="savingSignedIds.has(file.id)"
+              @click="downloadSignedFile(file.id, file.originalName)"
+            />
+          </div>
+        </div>
+        <p v-else class="text-right text-xs text-muted">{{ t("No files") }}</p>
       </div>
     </article>
 

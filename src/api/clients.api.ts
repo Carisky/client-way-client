@@ -35,6 +35,7 @@ export type ClientContract = {
   status: ContractStatus;
   createdAt: string;
   generatedDocuments?: GeneratedDocument[];
+  signedFiles?: SignedFile[];
 };
 
 export type GeneratedDocument = {
@@ -43,6 +44,16 @@ export type GeneratedDocument = {
   templateId: number | null;
   format: "DOCX" | "PDF" | "ZIP";
   fileName: string;
+  createdAt: string;
+};
+
+export type SignedFile = {
+  id: number;
+  contractId: number;
+  originalName: string;
+  fileName: string;
+  mimeType: string | null;
+  sizeBytes: number;
   createdAt: string;
 };
 

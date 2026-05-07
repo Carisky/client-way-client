@@ -1,4 +1,4 @@
-import type { ContractStatus, ContractType, GeneratedDocument, LanguageVariant } from "./clients.api";
+import type { ContractStatus, ContractType, GeneratedDocument, LanguageVariant, SignedFile } from "./clients.api";
 import { request } from "./http";
 
 export type ContractPayload = {
@@ -25,6 +25,7 @@ export type Contract = ContractPayload & {
     };
   };
   generatedDocuments?: GeneratedDocument[];
+  signedFiles?: SignedFile[];
 };
 
 export type ContractListFilters = {
@@ -107,6 +108,26 @@ export const saveGeneratedDocumentToDownloads = (id: number) => {
 
 export const openGeneratedDocumentLocation = (id: number) => {
   return request<{ openedPath: string }>(`/api/generated-documents/${id}/open-location`, {
+    method: "POST",
+  });
+};
+
+export const signedFileDownloadUrl = (id: number) => {
+  return `http://localhost:4000/api/contracts/signed-files/${id}/download`;
+};
+
+export const signedFilePreviewUrl = (id: number) => {
+  return `http://localhost:4000/api/contracts/signed-files/${id}/preview`;
+};
+
+export const saveSignedFileToDownloads = (id: number) => {
+  return request<{ savedTo: string }>(`/api/contracts/signed-files/${id}/save-to-downloads`, {
+    method: "POST",
+  });
+};
+
+export const openSignedFileLocation = (id: number) => {
+  return request<{ openedPath: string }>(`/api/contracts/signed-files/${id}/open-location`, {
     method: "POST",
   });
 };
