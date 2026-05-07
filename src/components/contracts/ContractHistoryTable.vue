@@ -6,13 +6,10 @@ import {
   generatedDocumentDownloadUrl,
   generatedDocumentPreviewUrl,
   generateContractDocuments,
-  openGeneratedDocumentLocation,
-  openSignedFileLocation,
-  saveGeneratedDocumentToDownloads,
-  saveSignedFileToDownloads,
   signedFileDownloadUrl,
   signedFilePreviewUrl,
 } from "../../api/contracts.api";
+import { downloadFileToClient } from "../../api/downloads";
 import { fetchTemplates, type DocumentTemplate } from "../../api/templates.api";
 import { getAuthToken } from "../../api/http";
 import { useAppToast } from "../../composables/useAppToast";
@@ -193,47 +190,14 @@ const downloadGeneratedDocument = async (documentId: number, fileName: string) =
   savingIds.value = new Set(savingIds.value).add(documentId);
 
   try {
-    const result = await saveGeneratedDocumentToDownloads(documentId);
-    let locationOpened = false;
-    toast.success("File saved", t("{path}. Click to open location.", { path: result.savedTo }), () => {
-      if (locationOpened) {
-        return;
-      }
-
-      locationOpened = true;
-      void openGeneratedLocation(documentId);
-    });
-  } catch {
-    const response = await fetch(generatedDocumentDownloadUrl(documentId), {
-      headers: getAuthToken() ? { Authorization: `Bearer ${getAuthToken()}` } : {},
-    });
-
-    if (!response.ok) {
-      toast.error(new Error("Download failed"));
-      return;
-    }
-
-    const blob = await response.blob();
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = fileName;
-    link.click();
-    URL.revokeObjectURL(url);
-    toast.success("Download started", fileName);
+    const result = await downloadFileToClient(generatedDocumentDownloadUrl(documentId), fileName);
+    toast.success(result?.savedTo ? "File saved" : "Download started", result?.savedTo ?? fileName);
+  } catch (error) {
+    toast.error(error, "Download failed");
   } finally {
     const next = new Set(savingIds.value);
     next.delete(documentId);
     savingIds.value = next;
-  }
-};
-
-const openGeneratedLocation = async (documentId: number) => {
-  try {
-    const result = await openGeneratedDocumentLocation(documentId);
-    toast.success("Opened file location", result.openedPath);
-  } catch (error) {
-    toast.error(error, "Failed to open file location");
   }
 };
 
@@ -261,47 +225,14 @@ const downloadSignedFile = async (signedFileId: number, fileName: string) => {
   savingSignedIds.value = new Set(savingSignedIds.value).add(signedFileId);
 
   try {
-    const result = await saveSignedFileToDownloads(signedFileId);
-    let locationOpened = false;
-    toast.success("File saved", t("{path}. Click to open location.", { path: result.savedTo }), () => {
-      if (locationOpened) {
-        return;
-      }
-
-      locationOpened = true;
-      void openSignedLocation(signedFileId);
-    });
-  } catch {
-    const response = await fetch(signedFileDownloadUrl(signedFileId), {
-      headers: getAuthToken() ? { Authorization: `Bearer ${getAuthToken()}` } : {},
-    });
-
-    if (!response.ok) {
-      toast.error(new Error("Download failed"));
-      return;
-    }
-
-    const blob = await response.blob();
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = fileName;
-    link.click();
-    URL.revokeObjectURL(url);
-    toast.success("Download started", fileName);
+    const result = await downloadFileToClient(signedFileDownloadUrl(signedFileId), fileName);
+    toast.success(result?.savedTo ? "File saved" : "Download started", result?.savedTo ?? fileName);
+  } catch (error) {
+    toast.error(error, "Download failed");
   } finally {
     const next = new Set(savingSignedIds.value);
     next.delete(signedFileId);
     savingSignedIds.value = next;
-  }
-};
-
-const openSignedLocation = async (signedFileId: number) => {
-  try {
-    const result = await openSignedFileLocation(signedFileId);
-    toast.success("Opened file location", result.openedPath);
-  } catch (error) {
-    toast.error(error, "Failed to open file location");
   }
 };
 </script>

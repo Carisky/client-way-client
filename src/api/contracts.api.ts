@@ -1,5 +1,5 @@
 import type { ContractStatus, ContractType, GeneratedDocument, LanguageVariant, SignedFile } from "./clients.api";
-import { request } from "./http";
+import { apiUrl, request } from "./http";
 
 export type ContractPayload = {
   contractType: ContractType;
@@ -92,11 +92,11 @@ export const generateContractDocuments = (
 };
 
 export const generatedDocumentDownloadUrl = (id: number) => {
-  return `http://localhost:4000/api/generated-documents/${id}/download`;
+  return apiUrl(`/api/generated-documents/${id}/download`);
 };
 
 export const generatedDocumentPreviewUrl = (id: number) => {
-  return `http://localhost:4000/api/generated-documents/${id}/preview`;
+  return apiUrl(`/api/generated-documents/${id}/preview`);
 };
 
 export const fetchGeneratedDocuments = (contractId: number) => {
@@ -116,11 +116,11 @@ export const openGeneratedDocumentLocation = (id: number) => {
 };
 
 export const signedFileDownloadUrl = (id: number) => {
-  return `http://localhost:4000/api/contracts/signed-files/${id}/download`;
+  return apiUrl(`/api/contracts/signed-files/${id}/download`);
 };
 
 export const signedFilePreviewUrl = (id: number) => {
-  return `http://localhost:4000/api/contracts/signed-files/${id}/preview`;
+  return apiUrl(`/api/contracts/signed-files/${id}/preview`);
 };
 
 export const saveSignedFileToDownloads = (id: number) => {
