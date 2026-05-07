@@ -42,6 +42,14 @@ export type GeneratedDocument = {
   id: number;
   contractId: number;
   templateId: number | null;
+  template?: {
+    id: number;
+    code: string;
+    name: string;
+    contractType: ContractType;
+    templateKind: "MAIN" | "ANEKS";
+    parentTemplateId: number | null;
+  } | null;
   format: "DOCX" | "PDF" | "ZIP";
   fileName: string;
   createdAt: string;

@@ -13,6 +13,7 @@ import {
   signedFileDownloadUrl,
   signedFilePreviewUrl,
 } from "../../api/contracts.api";
+import { fetchTemplates, type DocumentTemplate } from "../../api/templates.api";
 import { getAuthToken } from "../../api/http";
 import { useAppToast } from "../../composables/useAppToast";
 import { useI18n } from "../../i18n";
@@ -32,6 +33,21 @@ const { t } = useI18n();
 const generatingIds = ref(new Set<number>());
 const savingIds = ref(new Set<number>());
 const savingSignedIds = ref(new Set<number>());
+const aneksDialog = ref<{
+  isOpen: boolean;
+  isLoading: boolean;
+  contract: ClientContract | null;
+  mode: "MAIN_WITH_ANEKS" | "ANEKS";
+  templates: DocumentTemplate[];
+  selectedIds: number[];
+}>({
+  isOpen: false,
+  isLoading: false,
+  contract: null,
+  mode: "ANEKS",
+  templates: [],
+  selectedIds: [],
+});
 
 const uploadSignedCopy = async (contractId: number, event: Event) => {
   const input = event.target as HTMLInputElement;
@@ -51,11 +67,43 @@ const uploadSignedCopy = async (contractId: number, event: Event) => {
   }
 };
 
-const generateDocuments = async (contractId: number) => {
+const generateDocuments = async (
+  contract: ClientContract,
+  mode: "MAIN" | "MAIN_WITH_ANEKS" | "ANEKS",
+  selectedAneksIds: number[] = [],
+) => {
+  const contractId = contract.id;
   generatingIds.value = new Set(generatingIds.value).add(contractId);
 
   try {
-    await generateContractDocuments(contractId);
+    if (mode === "ANEKS") {
+      if (!selectedAneksIds.length) {
+        toast.error(new Error("Select at least one ANEKS template"));
+        return;
+      }
+
+      await generateContractDocuments(contractId, {
+        templateIds: selectedAneksIds,
+        replaceExisting: true,
+      });
+    } else if (mode === "MAIN_WITH_ANEKS") {
+      if (!selectedAneksIds.length) {
+        toast.error(new Error("Select at least one ANEKS template"));
+        return;
+      }
+
+      const mainTemplates = (await fetchTemplates(contract.contractType, true, "MAIN")).templates;
+      await generateContractDocuments(contractId, {
+        templateIds: [...mainTemplates.map((template) => template.id), ...selectedAneksIds],
+        replaceExisting: true,
+      });
+    } else {
+      await generateContractDocuments(contractId, {
+        includeAneks: false,
+        replaceExisting: true,
+      });
+    }
+
     toast.success("Documents generated");
     emit("generated");
   } catch (error) {
@@ -65,6 +113,64 @@ const generateDocuments = async (contractId: number) => {
     next.delete(contractId);
     generatingIds.value = next;
   }
+};
+
+const openAneksDialog = async (contract: ClientContract, mode: "MAIN_WITH_ANEKS" | "ANEKS") => {
+  aneksDialog.value = {
+    isOpen: true,
+    isLoading: true,
+    contract,
+    mode,
+    templates: [],
+    selectedIds: [],
+  };
+
+  try {
+    const templates = (await fetchTemplates(contract.contractType, true, "ANEKS")).templates;
+    aneksDialog.value = {
+      ...aneksDialog.value,
+      isLoading: false,
+      templates,
+      selectedIds: templates.map((template) => template.id),
+    };
+  } catch (error) {
+    aneksDialog.value = { ...aneksDialog.value, isLoading: false };
+    toast.error(error, "Failed to load templates");
+  }
+};
+
+const closeAneksDialog = () => {
+  aneksDialog.value = {
+    isOpen: false,
+    isLoading: false,
+    contract: null,
+    mode: "ANEKS",
+    templates: [],
+    selectedIds: [],
+  };
+};
+
+const toggleAneksTemplate = (templateId: number) => {
+  const selected = new Set(aneksDialog.value.selectedIds);
+
+  if (selected.has(templateId)) {
+    selected.delete(templateId);
+  } else {
+    selected.add(templateId);
+  }
+
+  aneksDialog.value = { ...aneksDialog.value, selectedIds: [...selected] };
+};
+
+const confirmAneksGeneration = async () => {
+  const { contract, mode, selectedIds } = aneksDialog.value;
+
+  if (!contract) {
+    return;
+  }
+
+  await generateDocuments(contract, mode, selectedIds);
+  closeAneksDialog();
 };
 
 const previewGeneratedDocument = async (documentId: number) => {
@@ -238,12 +344,32 @@ const openSignedLocation = async (signedFileId: number) => {
           <UButton
             size="xs"
             icon="i-lucide-file-cog"
-            :title="t('Generate docs')"
-            :aria-label="t('Generate docs')"
+            :title="t('Generate main docs')"
+            :aria-label="t('Generate main docs')"
             variant="outline"
             square
             :loading="generatingIds.has(contract.id)"
-            @click="generateDocuments(contract.id)"
+            @click="generateDocuments(contract, 'MAIN')"
+          />
+          <UButton
+            size="xs"
+            icon="i-lucide-files"
+            :title="t('Generate docs with ANEKS')"
+            :aria-label="t('Generate docs with ANEKS')"
+            variant="outline"
+            square
+            :loading="generatingIds.has(contract.id)"
+            @click="openAneksDialog(contract, 'MAIN_WITH_ANEKS')"
+          />
+          <UButton
+            size="xs"
+            icon="i-lucide-file-plus-2"
+            :title="t('Generate ANEKS only')"
+            :aria-label="t('Generate ANEKS only')"
+            variant="outline"
+            square
+            :loading="generatingIds.has(contract.id)"
+            @click="openAneksDialog(contract, 'ANEKS')"
           />
         </div>
         <div v-if="contract.generatedDocuments?.length" class="flex min-w-0 flex-col gap-1">
@@ -253,7 +379,8 @@ const openSignedLocation = async (signedFileId: number) => {
             class="grid min-w-0 grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-1 text-xs"
           >
             <span class="truncate text-muted" :title="`${document.format} - ${document.fileName}`">
-              {{ document.format }} - {{ document.fileName }}
+              {{ document.template?.templateKind === "ANEKS" ? "ANEKS - " : "" }}{{ document.format }} -
+              {{ document.fileName }}
             </span>
             <UButton
               v-if="document.format === 'PDF'"
@@ -335,5 +462,70 @@ const openSignedLocation = async (signedFileId: number) => {
     </article>
 
     <p v-if="!contracts.length" class="py-8 text-center text-sm text-muted">{{ t("No contracts yet") }}</p>
+
+    <div
+      v-if="aneksDialog.isOpen"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+      role="dialog"
+      aria-modal="true"
+    >
+      <div class="w-full max-w-lg rounded-md border border-default bg-default shadow-xl">
+        <div class="flex items-center justify-between border-b border-default px-4 py-3">
+          <div>
+            <p class="font-medium text-highlighted">
+              {{ aneksDialog.mode === "ANEKS" ? t("Generate ANEKS only") : t("Generate docs with ANEKS") }}
+            </p>
+            <p class="text-xs text-muted">{{ aneksDialog.contract?.contractType }}</p>
+          </div>
+          <UButton
+            icon="i-lucide-x"
+            variant="ghost"
+            square
+            :title="t('Cancel')"
+            :aria-label="t('Cancel')"
+            @click="closeAneksDialog"
+          />
+        </div>
+
+        <div class="max-h-[60vh] overflow-y-auto p-4">
+          <div v-if="aneksDialog.isLoading" class="py-8 text-center text-sm text-muted">
+            {{ t("Loading templates...") }}
+          </div>
+          <div v-else-if="aneksDialog.templates.length" class="space-y-2">
+            <label
+              v-for="template in aneksDialog.templates"
+              :key="template.id"
+              class="flex cursor-pointer items-start gap-3 rounded-md border border-default p-3 hover:bg-muted"
+            >
+              <input
+                type="checkbox"
+                class="mt-1"
+                :checked="aneksDialog.selectedIds.includes(template.id)"
+                @change="toggleAneksTemplate(template.id)"
+              />
+              <span class="min-w-0">
+                <span class="block truncate text-sm font-medium text-highlighted">{{ template.name }}</span>
+                <span class="block truncate text-xs text-muted">
+                  {{ template.code }}
+                  <template v-if="template.parentTemplate"> - {{ template.parentTemplate.name }}</template>
+                </span>
+              </span>
+            </label>
+          </div>
+          <p v-else class="py-8 text-center text-sm text-muted">{{ t("No templates imported.") }}</p>
+        </div>
+
+        <div class="flex justify-end gap-2 border-t border-default px-4 py-3">
+          <UButton :label="t('Cancel')" variant="outline" @click="closeAneksDialog" />
+          <UButton
+            icon="i-lucide-file-cog"
+            :label="t('Generate docs')"
+            :disabled="aneksDialog.isLoading || !aneksDialog.selectedIds.length"
+            :loading="!!aneksDialog.contract && generatingIds.has(aneksDialog.contract.id)"
+            @click="confirmAneksGeneration"
+          />
+        </div>
+      </div>
+    </div>
   </div>
 </template>

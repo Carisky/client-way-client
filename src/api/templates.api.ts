@@ -2,6 +2,7 @@ import type { ContractType } from "./clients.api";
 import { request } from "./http";
 
 export type TemplateLanguage = "PL" | "EN" | "UA" | "RU";
+export type TemplateKind = "MAIN" | "ANEKS";
 
 export type DocumentTemplateTranslation = {
   id: number;
@@ -17,6 +18,10 @@ export type DocumentTemplate = {
   code: string;
   name: string;
   contractType: ContractType;
+  templateKind: TemplateKind;
+  parentTemplateId: number | null;
+  parentTemplate?: Pick<DocumentTemplate, "id" | "code" | "name" | "contractType"> | null;
+  aneksTemplates?: Array<Pick<DocumentTemplate, "id" | "code" | "name" | "isActive">>;
   baseLanguage: TemplateLanguage;
   fileName: string;
   placeholders: string[];
@@ -25,10 +30,17 @@ export type DocumentTemplate = {
   translations: DocumentTemplateTranslation[];
 };
 
-export const fetchTemplates = (contractType = "", activeOnly = true) => {
+export const fetchTemplates = (
+  contractType = "",
+  activeOnly = true,
+  templateKind: TemplateKind | "" = "",
+) => {
   const params = new URLSearchParams();
   if (contractType) {
     params.set("contractType", contractType);
+  }
+  if (templateKind) {
+    params.set("templateKind", templateKind);
   }
   params.set("activeOnly", String(activeOnly));
   const query = `?${params.toString()}`;
@@ -39,6 +51,8 @@ export const uploadTemplate = (payload: {
   code: string;
   name: string;
   contractType: ContractType;
+  templateKind: TemplateKind;
+  parentTemplateId: number | null;
   baseLanguage: TemplateLanguage;
   file: File;
 }) => {
@@ -48,6 +62,10 @@ export const uploadTemplate = (payload: {
   }
   body.set("name", payload.name);
   body.set("contractType", payload.contractType);
+  body.set("templateKind", payload.templateKind);
+  if (payload.parentTemplateId) {
+    body.set("parentTemplateId", String(payload.parentTemplateId));
+  }
   body.set("baseLanguage", payload.baseLanguage);
   body.set("file", payload.file);
 

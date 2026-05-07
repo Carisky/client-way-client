@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import type { ContractType } from "../api/clients.api";
 import {
   archiveTemplate,
@@ -8,6 +8,7 @@ import {
   uploadTemplate,
   uploadTemplateTranslation,
   type DocumentTemplate,
+  type TemplateKind,
   type TemplateLanguage,
 } from "../api/templates.api";
 import AppLayout from "../components/layout/AppLayout.vue";
@@ -19,7 +20,9 @@ const contractTypes: ContractType[] = ["STANDARD", "IMPORT_33A", "CBAM", "SENT"]
 const translationLanguages: Array<Exclude<TemplateLanguage, "PL">> = ["EN", "UA", "RU"];
 
 const templates = ref<DocumentTemplate[]>([]);
+const parentTemplateOptions = ref<DocumentTemplate[]>([]);
 const selectedContractType = ref<ContractType | "">("");
+const selectedTemplateKind = ref<TemplateKind | "">("");
 const activeOnly = ref(true);
 const toast = useAppToast();
 const { t } = useI18n();
@@ -30,9 +33,15 @@ const form = ref({
   code: "",
   name: "",
   contractType: "STANDARD" as ContractType,
+  templateKind: "MAIN" as TemplateKind,
+  parentTemplateId: null as number | null,
   baseLanguage: "PL" as TemplateLanguage,
   file: null as File | null,
 });
+
+const parentTemplates = computed(() =>
+  parentTemplateOptions.value.filter((template) => template.contractType === form.value.contractType),
+);
 
 const fieldError = (path: string) => fieldErrors.value[path];
 
@@ -40,12 +49,18 @@ const loadTemplates = async () => {
   isLoading.value = true;
 
   try {
-    templates.value = (await fetchTemplates(selectedContractType.value, activeOnly.value)).templates;
+    templates.value = (
+      await fetchTemplates(selectedContractType.value, activeOnly.value, selectedTemplateKind.value)
+    ).templates;
   } catch (error) {
     toast.error(error, "Failed to load templates");
   } finally {
     isLoading.value = false;
   }
+};
+
+const loadParentTemplates = async () => {
+  parentTemplateOptions.value = (await fetchTemplates(form.value.contractType, true, "MAIN")).templates;
 };
 
 const archive = async (templateId: number) => {
@@ -88,6 +103,8 @@ const submitTemplate = async () => {
       code: form.value.code,
       name: form.value.name,
       contractType: form.value.contractType,
+      templateKind: form.value.templateKind,
+      parentTemplateId: form.value.parentTemplateId,
       baseLanguage: form.value.baseLanguage,
       file: form.value.file,
     });
@@ -95,11 +112,13 @@ const submitTemplate = async () => {
       code: "",
       name: "",
       contractType: "STANDARD",
+      templateKind: "MAIN",
+      parentTemplateId: null,
       baseLanguage: "PL",
       file: null,
     };
     toast.success("Template imported");
-    await loadTemplates();
+    await Promise.all([loadTemplates(), loadParentTemplates()]);
   } catch (error) {
     fieldErrors.value = fieldErrorsFromApiError(error);
     toast.error(error, "Failed to upload template");
@@ -130,7 +149,25 @@ const submitTranslation = async (
   }
 };
 
-onMounted(loadTemplates);
+watch(
+  () => [form.value.contractType, form.value.templateKind],
+  async () => {
+    await loadParentTemplates();
+
+    if (form.value.templateKind === "MAIN") {
+      form.value.parentTemplateId = null;
+      return;
+    }
+
+    if (!parentTemplates.value.some((template) => template.id === form.value.parentTemplateId)) {
+      form.value.parentTemplateId = parentTemplates.value[0]?.id ?? null;
+    }
+  },
+);
+
+onMounted(async () => {
+  await Promise.all([loadTemplates(), loadParentTemplates()]);
+});
 </script>
 
 <template>
@@ -155,6 +192,20 @@ onMounted(loadTemplates);
               <option v-for="type in contractTypes" :key="type" :value="type">{{ type }}</option>
             </select>
           </UFormField>
+          <UFormField :label="t('Template type')">
+            <select v-model="form.templateKind" class="h-9 w-full rounded-md border border-default bg-default px-3 text-sm">
+              <option value="MAIN">{{ t("Main") }}</option>
+              <option value="ANEKS">ANEKS</option>
+            </select>
+          </UFormField>
+          <UFormField v-if="form.templateKind === 'ANEKS'" :label="t('Parent template')" :error="fieldError('parentTemplateId')">
+            <select v-model="form.parentTemplateId" class="h-9 w-full rounded-md border border-default bg-default px-3 text-sm">
+              <option :value="null">{{ t("Select") }}</option>
+              <option v-for="template in parentTemplates" :key="template.id" :value="template.id">
+                {{ template.name }} · {{ template.code }}
+              </option>
+            </select>
+          </UFormField>
           <UFormField :label="t('Base language')">
             <select v-model="form.baseLanguage" class="h-9 w-full rounded-md border border-default bg-default px-3 text-sm">
               <option value="PL">PL</option>
@@ -177,6 +228,11 @@ onMounted(loadTemplates);
                 <option value="">{{ t("All") }}</option>
                 <option v-for="type in contractTypes" :key="type" :value="type">{{ type }}</option>
               </select>
+              <select v-model="selectedTemplateKind" class="h-9 rounded-md border border-default bg-default px-3 text-sm">
+                <option value="">{{ t("All types") }}</option>
+                <option value="MAIN">{{ t("Main") }}</option>
+                <option value="ANEKS">ANEKS</option>
+              </select>
               <UButton icon="i-lucide-refresh-cw" :label="t('Refresh')" variant="outline" @click="loadTemplates" />
             </div>
           </div>
@@ -189,7 +245,11 @@ onMounted(loadTemplates);
               <div>
                 <p class="font-medium text-highlighted">{{ template.fileName }}</p>
                 <p class="text-sm text-muted">
-                  {{ template.name }} &middot; {{ template.contractType }} &middot; {{ template.code }}
+                  {{ template.name }} &middot; {{ template.contractType }} &middot; {{ template.code }} &middot;
+                  {{ template.templateKind }}
+                </p>
+                <p v-if="template.parentTemplate" class="text-xs text-muted">
+                  {{ t("Parent") }}: {{ template.parentTemplate.name }} · {{ template.parentTemplate.code }}
                 </p>
               </div>
               <div class="flex items-center gap-2">
@@ -197,6 +257,9 @@ onMounted(loadTemplates);
                   {{ template.isActive ? t("Active") : t("Archived") }}
                 </UBadge>
                 <UBadge color="neutral" variant="soft">{{ template.baseLanguage }}</UBadge>
+                <UBadge :color="template.templateKind === 'ANEKS' ? 'warning' : 'neutral'" variant="soft">
+                  {{ template.templateKind }}
+                </UBadge>
                 <UButton
                   v-if="template.isActive"
                   size="xs"

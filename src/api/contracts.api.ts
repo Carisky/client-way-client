@@ -78,12 +78,15 @@ export const attachSignedCopy = (id: number, file: File) => {
   });
 };
 
-export const generateContractDocuments = (id: number, templateIds?: number[]) => {
+export const generateContractDocuments = (
+  id: number,
+  options: { templateIds?: number[]; includeAneks?: boolean; replaceExisting?: boolean } = {},
+) => {
   return request<{ documents: GeneratedDocument[]; contract: Contract }>(
     `/api/contracts/${id}/generate-documents`,
     {
       method: "POST",
-      body: JSON.stringify({ templateIds }),
+      body: JSON.stringify(options),
     },
   );
 };
