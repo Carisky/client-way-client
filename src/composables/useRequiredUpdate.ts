@@ -1,6 +1,6 @@
 import { computed, ref, shallowRef } from "vue";
 import { getVersion } from "@tauri-apps/api/app";
-import { relaunch } from "@tauri-apps/plugin-process";
+import { Channel, invoke } from "@tauri-apps/api/core";
 import { check, type DownloadEvent, type Update } from "@tauri-apps/plugin-updater";
 import { useI18n } from "../i18n";
 
@@ -57,7 +57,9 @@ export function useRequiredUpdate() {
     let contentLength: number | undefined;
 
     try {
-      await update.value.downloadAndInstall((event: DownloadEvent) => {
+      const onEvent = new Channel<DownloadEvent>();
+
+      onEvent.onmessage = (event) => {
         if (event.event === "Started") {
           contentLength = event.data.contentLength;
           downloaded = 0;
@@ -72,10 +74,9 @@ export function useRequiredUpdate() {
         if (event.event === "Finished") {
           progressText.value = t("Installing update");
         }
-      });
+      };
 
-      progressText.value = t("Restarting application");
-      await relaunch();
+      await invoke("install_portable_update", { onEvent });
     } catch (caught) {
       error.value = caught instanceof Error ? caught.message : String(caught);
       isInstalling.value = false;

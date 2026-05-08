@@ -1,6 +1,6 @@
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
-import { basename, delimiter, dirname, join, resolve } from "node:path";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, unlinkSync, writeFileSync } from "node:fs";
+import { basename, delimiter, dirname, extname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
@@ -12,6 +12,7 @@ const packagePath = join(clientRoot, "package.json");
 const productionEnvPath = join(clientRoot, ".env.production");
 const updaterDir = join(clientRoot, "dist-updater");
 const bundleDir = join(clientRoot, "src-tauri", "target", "release", "bundle");
+const releaseDir = join(clientRoot, "src-tauri", "target", "release");
 
 function parseEnvValue(value) {
   const trimmed = value.trim();
@@ -106,17 +107,6 @@ function getRepository() {
   }
 }
 
-function walkFiles(path) {
-  if (!existsSync(path)) {
-    return [];
-  }
-
-  return readdirSync(path, { withFileTypes: true }).flatMap((entry) => {
-    const nextPath = join(path, entry.name);
-    return entry.isDirectory() ? walkFiles(nextPath) : [nextPath];
-  });
-}
-
 function cleanBundleArtifacts() {
   const resolvedBundleDir = resolve(bundleDir);
   const resolvedClientRoot = resolve(clientRoot);
@@ -141,8 +131,8 @@ function syncVersions(version, repository) {
   config.version = version;
   config.bundle = {
     ...config.bundle,
-    active: true,
-    createUpdaterArtifacts: true,
+    active: false,
+    createUpdaterArtifacts: false,
   };
   config.plugins = {
     ...config.plugins,
@@ -158,9 +148,9 @@ function syncVersions(version, repository) {
   writeFileSync(cargoPath, cargo);
 }
 
-function buildLatestJson(version, repository, msiPath, signaturePath) {
+function buildLatestJson(version, repository, executablePath, signaturePath) {
   const tag = `v${version}`;
-  const msiName = basename(msiPath);
+  const executableName = basename(executablePath);
   const signature = readFileSync(signaturePath, "utf8").trim();
   const latestJsonPath = join(updaterDir, "latest.json");
 
@@ -172,7 +162,7 @@ function buildLatestJson(version, repository, msiPath, signaturePath) {
     platforms: {
       "windows-x86_64": {
         signature,
-        url: `https://github.com/${repository}/releases/download/${tag}/${encodeURIComponent(msiName)}`,
+        url: `https://github.com/${repository}/releases/download/${tag}/${encodeURIComponent(executableName)}`,
       },
     },
   });
@@ -180,26 +170,37 @@ function buildLatestJson(version, repository, msiPath, signaturePath) {
   return latestJsonPath;
 }
 
-function findBuildArtifacts(version) {
-  const files = walkFiles(bundleDir);
-  const versionToken = `_${version}_`;
-  const msiCandidates = files.filter(
-    (file) => file.toLowerCase().endsWith(".msi") && basename(file).includes(versionToken)
-  );
-  const msiPath = msiCandidates.sort((left, right) => statSync(right).mtimeMs - statSync(left).mtimeMs)[0];
-  const signaturePath = msiPath && existsSync(`${msiPath}.sig`) ? `${msiPath}.sig` : undefined;
+function createPortableArtifact(version) {
+  const packageName = readFileSync(cargoPath, "utf8").match(/^name = "(.+)"$/m)?.[1] ?? "client";
+  const builtExecutablePath = join(releaseDir, `${packageName}.exe`);
 
-  if (!msiPath) {
-    throw new Error(`MSI artifact for version ${version} was not found in ${bundleDir}`);
+  if (!existsSync(builtExecutablePath)) {
+    throw new Error(`Portable executable was not found: ${builtExecutablePath}`);
   }
 
-  if (!signaturePath) {
+  mkdirSync(updaterDir, { recursive: true });
+
+  const portablePath = join(updaterDir, `${packageName}_${version}_x64_portable.exe`);
+  const signaturePath = `${portablePath}.sig`;
+
+  if (existsSync(portablePath)) {
+    unlinkSync(portablePath);
+  }
+
+  if (existsSync(signaturePath)) {
+    unlinkSync(signaturePath);
+  }
+
+  copyFileSync(builtExecutablePath, portablePath);
+  exec(process.execPath, [tauriCliPath, "signer", "sign", portablePath]);
+
+  if (!existsSync(signaturePath)) {
     throw new Error(
-      `Updater signature for ${basename(msiPath)} was not found. Make sure TAURI_SIGNING_PRIVATE_KEY is set before running build:remote.`
+      `Updater signature for ${basename(portablePath)} was not found. Make sure TAURI_SIGNING_PRIVATE_KEY is set before running build:remote.`
     );
   }
 
-  return { msiPath, signaturePath };
+  return { portablePath, signaturePath };
 }
 
 function getReleaseAssetNames(tag) {
@@ -221,7 +222,12 @@ function getReleaseAssetNames(tag) {
 function deleteStaleReleaseAssets(tag, assets) {
   const currentNames = new Set(assets.map((asset) => basename(asset)));
   const staleNames = getReleaseAssetNames(tag).filter((name) => {
-    const isUpdaterAsset = name === "latest.json" || name.toLowerCase().endsWith(".msi") || name.toLowerCase().endsWith(".msi.sig");
+    const lowerName = name.toLowerCase();
+    const extension = extname(lowerName);
+    const isPortableAsset =
+      lowerName.includes("_portable") && (extension === ".exe" || lowerName.endsWith(".exe.sig"));
+    const isLegacyMsiAsset = lowerName.endsWith(".msi") || lowerName.endsWith(".msi.sig");
+    const isUpdaterAsset = name === "latest.json" || isPortableAsset || isLegacyMsiAsset;
     return isUpdaterAsset && !currentNames.has(name);
   });
 
@@ -276,11 +282,11 @@ for (const [key, value] of Object.entries(productionEnv)) {
 syncVersions(version, repository);
 
 cleanBundleArtifacts();
-exec(process.execPath, [tauriCliPath, "build", "--bundles", "msi"]);
+exec(process.execPath, [tauriCliPath, "build", "--no-bundle"]);
 
-const { msiPath, signaturePath } = findBuildArtifacts(version);
-const latestJsonPath = buildLatestJson(version, repository, msiPath, signaturePath);
+const { portablePath, signaturePath } = createPortableArtifact(version);
+const latestJsonPath = buildLatestJson(version, repository, portablePath, signaturePath);
 
-publishRelease(version, [msiPath, signaturePath, latestJsonPath]);
+publishRelease(version, [portablePath, signaturePath, latestJsonPath]);
 
 console.log(`Published v${version} to https://github.com/${repository}/releases/tag/v${version}`);

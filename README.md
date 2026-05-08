@@ -23,10 +23,10 @@ This template should help get you started developing with Vue 3 and TypeScript i
    $env:TAURI_SIGNING_PRIVATE_KEY = Get-Content .tauri\client-way.key -Raw
    ```
 
-4. Build the production MSI and publish/update the GitHub release:
+4. Build the production portable EXE and publish/update the GitHub release:
 
    ```bash
    npm run build:remote
    ```
 
-The script uses `package.json` version for the Tauri version and release tag `vX.Y.Z`, builds with `.env.production`, uploads the MSI, signature, and `latest.json`.
+The script uses `package.json` version for the Tauri version and release tag `vX.Y.Z`, builds with `.env.production`, uploads the portable EXE, signature, and `latest.json`. The app updates itself by replacing the portable EXE in-place, so users do not need administrator rights as long as the app folder is writable.
