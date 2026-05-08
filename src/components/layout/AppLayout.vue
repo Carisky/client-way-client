@@ -16,6 +16,7 @@ const navItems = computed(() => [
   { label: t("Contracts"), icon: "i-lucide-file-check-2", to: "/contracts" },
   { label: t("Templates"), icon: "i-lucide-file-text", to: "/templates" },
   ...(auth.can("ADMIN") ? [{ label: t("Users"), icon: "i-lucide-users", to: "/users" }] : []),
+  ...(auth.can("ADMIN") ? [{ label: t("Settings"), icon: "i-lucide-settings", to: "/settings" }] : []),
 ]);
 
 const handleLogout = async () => {

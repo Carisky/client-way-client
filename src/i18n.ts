@@ -12,6 +12,15 @@ export const languageOptions: Array<{ value: AppLanguage; label: string }> = [
 const translations: Record<AppLanguage, Record<string, string>> = {
   en: {},
   pl: {
+    "Configure administrative system defaults.": "Konfiguruj administracyjne ustawienia systemu.",
+    "Contract numbering": "Numeracja umow",
+    "Continue numbering from": "Kontynuuj numeracje od",
+    "Failed to load settings": "Nie udalo sie zaladowac ustawien",
+    "Failed to save settings": "Nie udalo sie zapisac ustawien",
+    "Minimum from existing contracts: {number}": "Minimum z istniejacych umow: {number}",
+    "Numbering start raised to {number}": "Poczatek numeracji podniesiono do {number}",
+    "Settings": "Ustawienia",
+    "Settings saved": "Ustawienia zapisane",
     "Accepted": "Zaakceptowano",
     "Actions": "Akcje",
     "Active": "Aktywny",

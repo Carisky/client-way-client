@@ -11,6 +11,7 @@ import ContractDetailView from "../views/ContractDetailView.vue";
 import ContractWizardView from "../views/ContractWizardView.vue";
 import OfferFormView from "../views/OfferFormView.vue";
 import OffersListView from "../views/OffersListView.vue";
+import SettingsView from "../views/SettingsView.vue";
 import TemplatesView from "../views/TemplatesView.vue";
 
 export const router = createRouter({
@@ -81,6 +82,11 @@ export const router = createRouter({
     {
       path: "/users",
       component: UsersView,
+      meta: { requiresAuth: true, roles: ["ADMIN"] },
+    },
+    {
+      path: "/settings",
+      component: SettingsView,
       meta: { requiresAuth: true, roles: ["ADMIN"] },
     },
   ],
